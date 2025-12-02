@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -40,6 +41,9 @@ INSTALLED_APPS = [
     'rest_framework',  # 必须添加
     'django_filters',  # 可选但推荐
     'rest_framework.authtoken',  # 配置Token认证
+
+    # 我的应用
+    'app1_model_management.apps.App1ModelManagementConfig',
 ]
 
 MIDDLEWARE = [
@@ -112,29 +116,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# Internationalization
-# https://docs.djangoproject.com/en/5.2/topics/i18n/
-
-# LANGUAGE_CODE = "en-us"
-LANGUAGE_CODE = 'zh-hans'  # 语言代码：简体中文
-
-TIME_ZONE = "UTC"
-
-USE_I18N = True  # 启用国际化
-USE_L10N = True  # 启用本地化（格式如日期、数字等按本地习惯显示）
-
-USE_TZ = True  # 使用时区感知
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
-
-STATIC_URL = "static/"
-
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
-
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
 REST_FRAMEWORK = {
     # 默认权限：需要登录才能访问（可根据需求调整）
     'DEFAULT_PERMISSION_CLASSES': [
@@ -182,3 +163,31 @@ REST_FRAMEWORK = {
         'user': '1000/day',  # 登录用户
     },
 }
+
+# Internationalization
+# https://docs.djangoproject.com/en/5.2/topics/i18n/
+
+# LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = 'zh-hans'  # 语言代码：简体中文
+
+# TIME_ZONE = "UTC"
+TIME_ZONE = 'Asia/Shanghai'
+
+USE_I18N = True  # 启用国际化
+USE_L10N = True  # 启用本地化（格式如日期、数字等按本地习惯显示）
+
+USE_TZ = True  # 使用时区感知
+
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/5.2/howto/static-files/
+
+STATIC_URL = "static/"
+STATIC_ROOT = os.path.join(BASE_DIR, "static")
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Default primary key field type
+# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

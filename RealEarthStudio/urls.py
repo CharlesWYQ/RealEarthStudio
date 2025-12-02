@@ -16,8 +16,22 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
+from django.views.generic import RedirectView
 
 urlpatterns = [
+    # 根路径重定向到admin
+    path('', RedirectView.as_view(url='/admin/', permanent=False)),
+
+    # 管理员
     path("admin/", admin.site.urls),
+
+    # app1: 模型管理应用
+    path("api/app1/", include("app1_model_management.urls")),
 ]
+
+# 只在DEBUG模式下提供媒体文件服务
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
