@@ -1,7 +1,5 @@
-# D:/Projects/RealEarthStudio/RealEarthStudio/app1_model_management/admin.py
-
 from django.contrib import admin
-from .models import TargetModel, SceneModel  # 明确导入模型以避免 * 导入问题
+from .models import *
 from django.utils.safestring import mark_safe
 
 
