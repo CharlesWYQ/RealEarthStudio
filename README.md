@@ -20,7 +20,7 @@
 
 适用于特定目标检测数据集生成等场景。
 
-![LOGO](LOGO/RealEarthStudio_LOGO.png)
+![LOGO](static/LOGO/RealEarthStudio_LOGO1.png)
 
 ---
 
