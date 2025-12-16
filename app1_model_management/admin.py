@@ -2,15 +2,54 @@ from django.contrib import admin
 from .models import *
 from django.utils.safestring import mark_safe
 
-
 admin.site.site_header = '🌏 REAL EARTH STUDIO'
 admin.site.site_title = 'RealEarthStudio'
 admin.site.index_title = '数据维护管理系统'
 
 
+@admin.register(Category)
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = ['model_type', 'name', 'parent', 'level', 'is_leaf_status']
+    search_fields = ['name']
+    ordering = ['level', 'name']
+    list_display_links = ['name']
+    readonly_fields = ['level']
+
+    fieldsets = (
+        ('标签类别', {
+            'fields': ['model_type']
+        }),
+        ('标签信息', {
+            'fields': ['name', 'parent']
+        }),
+    )
+
+    def get_list_filter(self, request):
+        # 动态设置list_filter
+        parent_categories = Category.objects.filter(level__lte=1)
+
+        class ParentCategoryFilter(admin.SimpleListFilter):
+            title = '分类'
+            parameter_name = 'parent'
+
+            def lookups(self, _request, model_admin):
+                return [(cat.id, str(cat)) for cat in parent_categories]
+
+            def queryset(self, _request, queryset):
+                if self.value():
+                    return queryset.filter(parent_id=self.value())
+                return queryset
+
+        return ['model_type', ParentCategoryFilter, 'level']
+
+    @admin.display(description="叶子节点", boolean=True)
+    def is_leaf_status(self, obj):
+        return obj.is_leaf
+
+
 class BaseModelAdmin(admin.ModelAdmin):
     # 共有字段展示
-    list_display = ['model_id', 'category', 'uploaded_at', 'file_link']
+    list_display = ['model_id', 'get_categories', 'uploaded_at', 'file_link']
     list_display_links = ['model_id']
     list_filter = ['category', 'uploaded_at']
     search_fields = ['category', 'model_id']
@@ -24,6 +63,17 @@ class BaseModelAdmin(admin.ModelAdmin):
             'fields': ('file', 'file_preview')
         }),
     )
+
+    @admin.display(description="类别")
+    def get_categories(self, obj):
+        categories = []
+        for category in obj.category.all():
+            if not category.is_leaf:
+                # 标记非叶子节点
+                categories.append(f'<span style="color: orange;">{str(category)}</span>')
+            else:
+                categories.append(str(category))
+        return mark_safe(r"<br>".join(categories))
 
     @admin.display(description="文件")
     def file_link(self, obj):
@@ -44,9 +94,21 @@ class BaseModelAdmin(admin.ModelAdmin):
 
 @admin.register(TargetModel)
 class TargetModelAdmin(BaseModelAdmin):
-    pass
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        # 限制Category只能选择叶子节点
+        if db_field.name == "category":
+            # 只显示叶子节点（没有子分类的分类）
+            kwargs["queryset"] = Category.objects.filter(model_type__in=['general', 'target']).filter(children__isnull=True)
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
 
 
 @admin.register(SceneModel)
 class SceneModelAdmin(BaseModelAdmin):
-    pass
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        # 限制Category只能选择叶子节点
+        if db_field.name == "category":
+            # 只显示叶子节点（没有子分类的分类）
+            kwargs["queryset"] = Category.objects.filter(model_type__in=['general', 'scene']).filter(
+                children__isnull=True)
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
+

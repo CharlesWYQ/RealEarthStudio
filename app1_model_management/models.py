@@ -1,3 +1,6 @@
+# python manage.py makemigrations app1_model_management
+# python manage.py migrate app1_model_management
+
 from django.db import models
 from django.utils import timezone
 import uuid
@@ -15,7 +18,7 @@ def get_model_upload_path(prefix, instance, filename):
     ext = filename.split('.')[-1].lower()
     if ext != 'fbx':
         ext = 'fbx'
-    return os.path.join("Models", prefix, instance.category, f"{instance.model_id}.{ext}")
+    return os.path.join("Models", prefix, f"{instance.model_id}.{ext}")
 
 
 def target_model_upload_path(instance, filename):
@@ -28,10 +31,60 @@ def scene_model_upload_path(instance, filename):
     return get_model_upload_path("SceneModels", instance, filename)
 
 
+class Category(models.Model):
+    MODEL_TYPE_CHOICES = [
+        ('target', '目标模型分类'),
+        ('scene', '场景模型分类'),
+        ('general', '通用分类'),
+    ]
+    model_type = models.CharField(
+        "标签类别",
+        max_length=10,
+        choices=MODEL_TYPE_CHOICES,
+        default='target',
+        help_text="指定该分类适用于哪种模型类型"
+    )
+    name = models.CharField("分类名称", max_length=100)
+    parent = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='children',
+        verbose_name="父级分类"
+    )
+    level = models.PositiveSmallIntegerField("层级", default=0, editable=False)
+
+    class Meta:
+        verbose_name = "01-分类标签"
+        verbose_name_plural = "01-分类标签"
+        ordering = ['model_type', 'level', 'name']
+
+    def __str__(self):
+        # 显示完整路径
+        return self.full_name()
+
+    def full_name(self):
+        # 递归生成完整路径
+        if self.parent:
+            return f"{self.parent.full_name()} > {self.name}"
+        return self.name
+
+    def save(self, *args, **kwargs):
+        # 自动计算层级
+        self.level = self.parent.level + 1 if self.parent else 0
+        super().save(*args, **kwargs)
+
+    @property
+    def is_leaf(self):
+        # 是否为叶子节点（无子分类）
+        return not self.children.exists()
+
+
 class TargetModel(models.Model):
     model_id = models.CharField(verbose_name="模型ID", max_length=36, unique=True, editable=False)
     uploaded_at = models.DateTimeField(verbose_name="上传时间", default=timezone.now)
-    category = models.CharField(verbose_name="模型类别", max_length=100, help_text="模型所属的类别")
+    category = models.ManyToManyField(verbose_name="模型类别", to=Category, blank=True, help_text="模型所属的类别")
     file = models.FileField(
         verbose_name="模型文件",
         upload_to=target_model_upload_path,
@@ -39,12 +92,12 @@ class TargetModel(models.Model):
     )
 
     class Meta:
-        verbose_name = "01-目标模型"
-        verbose_name_plural = "01-目标模型"
+        verbose_name = "02-目标模型"
+        verbose_name_plural = "02-目标模型"
         ordering = ['-uploaded_at']
 
     def __str__(self):
-        return f"{self.model_id} ({self.category})"
+        return f"{self.model_id}"
 
     def save(self, *args, **kwargs):
         # 如果这是现有对象且文件字段被修改，则删除旧文件
@@ -55,7 +108,7 @@ class TargetModel(models.Model):
                 if old_instance.file and old_instance.file != self.file:
                     if os.path.isfile(old_instance.file.path):
                         os.remove(old_instance.file.path)
-            except SceneModel.DoesNotExist:
+            except TargetModel.DoesNotExist:
                 pass  # 新对象，无需处理
 
         # 设置model_id（如果是新对象）
@@ -79,7 +132,7 @@ class TargetModel(models.Model):
 class SceneModel(models.Model):
     model_id = models.CharField(verbose_name="模型ID", max_length=36, unique=True, editable=False)
     uploaded_at = models.DateTimeField(verbose_name="上传时间", default=timezone.now)
-    category = models.CharField(verbose_name="模型类别", max_length=100, help_text="模型所属的类别")
+    category = models.ManyToManyField(verbose_name="模型类别", to=Category, blank=True, help_text="模型所属的类别")
     file = models.FileField(
         verbose_name="模型文件",
         upload_to=scene_model_upload_path,
@@ -87,12 +140,12 @@ class SceneModel(models.Model):
     )
 
     class Meta:
-        verbose_name = "02-场景模型"
-        verbose_name_plural = "02-场景模型"
+        verbose_name = "03-场景模型"
+        verbose_name_plural = "03-场景模型"
         ordering = ['-uploaded_at']
 
     def __str__(self):
-        return f"{self.model_id} ({self.category})"
+        return f"{self.model_id}"
 
     def save(self, *args, **kwargs):
         # 如果这是现有对象且文件字段被修改，则删除旧文件
