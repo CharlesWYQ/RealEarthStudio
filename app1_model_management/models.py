@@ -82,7 +82,8 @@ class Category(models.Model):
 
 
 class TargetModel(models.Model):
-    model_id = models.CharField(verbose_name="模型ID", max_length=36, unique=True, editable=False)
+    model_id = models.UUIDField(verbose_name="模型ID", default=uuid.uuid4(), editable=False, unique=True,
+                                help_text="目标模型的唯一标识")
     uploaded_at = models.DateTimeField(verbose_name="上传时间", default=timezone.now)
     category = models.ManyToManyField(verbose_name="模型类别", to=Category, blank=True, help_text="模型所属的类别")
     file = models.FileField(
@@ -110,11 +111,6 @@ class TargetModel(models.Model):
                         os.remove(old_instance.file.path)
             except TargetModel.DoesNotExist:
                 pass  # 新对象，无需处理
-
-        # 设置model_id（如果是新对象）
-        if not self.model_id:
-            self.model_id = str(uuid.uuid4())
-
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
@@ -130,7 +126,8 @@ class TargetModel(models.Model):
 
 
 class SceneModel(models.Model):
-    model_id = models.CharField(verbose_name="模型ID", max_length=36, unique=True, editable=False)
+    model_id = models.UUIDField(verbose_name="模型ID", default=uuid.uuid4(), editable=False,unique=True,
+                                help_text="场景模型的唯一标识")
     uploaded_at = models.DateTimeField(verbose_name="上传时间", default=timezone.now)
     category = models.ManyToManyField(verbose_name="模型类别", to=Category, blank=True, help_text="模型所属的类别")
     file = models.FileField(
@@ -158,11 +155,6 @@ class SceneModel(models.Model):
                         os.remove(old_instance.file.path)
             except SceneModel.DoesNotExist:
                 pass  # 新对象，无需处理
-
-        # 设置model_id（如果是新对象）
-        if not self.model_id:
-            self.model_id = str(uuid.uuid4())
-
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):

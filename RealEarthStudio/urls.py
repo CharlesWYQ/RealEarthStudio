@@ -28,8 +28,11 @@ urlpatterns = [
     # 管理员
     path("admin/", admin.site.urls),
 
-    # app1: 模型管理应用
+    # app1: 目标及场景模型管理模块
     path("api/app1/", include("app1_model_management.urls")),
+
+    # app2: 数据集渲染任务管理模块
+    path("api/app2/", include("app2_rendering_task.urls")),
 ]
 
 # 只在DEBUG模式下提供媒体文件服务

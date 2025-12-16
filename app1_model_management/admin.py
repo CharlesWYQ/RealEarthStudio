@@ -9,15 +9,15 @@ admin.site.index_title = '数据维护管理系统'
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ['model_type', 'name', 'parent', 'level', 'is_leaf_status']
+    list_display = ['model_type', 'id', 'name', 'parent', 'level', 'is_leaf_status']
     search_fields = ['name']
     ordering = ['level', 'name']
     list_display_links = ['name']
-    readonly_fields = ['level']
+    readonly_fields = ['id', 'level']
 
     fieldsets = (
         ('标签类别', {
-            'fields': ['model_type']
+            'fields': ['id', 'model_type']
         }),
         ('标签信息', {
             'fields': ['name', 'parent']

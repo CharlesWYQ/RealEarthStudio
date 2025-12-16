@@ -44,6 +44,7 @@ INSTALLED_APPS = [
 
     # 我的应用
     'app1_model_management.apps.App1ModelManagementConfig',
+    'app2_rendering_task.apps.App2RenderingTaskConfig',
 ]
 
 MIDDLEWARE = [
