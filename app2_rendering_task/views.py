@@ -1,9 +1,7 @@
-import os
 from rest_framework.views import APIView
 from .tasks import execute_render_task
-from utils.status import response as my_response
-from .models import RenderingTask
 from django.shortcuts import redirect
+from time import sleep
 
 
 class StartRender(APIView):
@@ -12,6 +10,7 @@ class StartRender(APIView):
         # 开始渲染
         execute_render_task.delay(render_id)
         # return my_response.success(data=render_id, message="正在渲染")
+        sleep(1)
         return redirect("http://localhost:8000/admin/app2_rendering_task/renderingtask/")
 
 
