@@ -37,10 +37,12 @@ class RenderingTaskAdmin(admin.ModelAdmin):
     @admin.display(description="渲染状态")
     def render_progress_display(self, obj):
         url_render = reverse('app2_rendering_task:start_render_view', args=[obj.render_id])
-        url_show = "#"
+        url_show = reverse('app2_rendering_task:show_dataset_view', args=[obj.render_id])
         if obj.render_progress == 0:
             return mark_safe(f'<a href="{url_render}">开始渲染</a>')
         elif obj.render_progress == 1:
             return mark_safe(f'<a href="{url_show}" target="_blank">查看结果</a> | <a href="{url_render}">重新渲染</a>')
+        elif obj.render_progress == 0.9:
+            return mark_safe(f'{obj.render_progress * 100:.2f}% | <a href="{url_render}">重新渲染</a>')
         else:
             return f"{obj.render_progress * 100:.2f}%"

@@ -7,12 +7,14 @@
 # @Details : 定义异步任务
 
 
+from django.conf import settings
 from celery import shared_task
 import os
 from django.utils import timezone
 from .models import RenderingTask
 
 from utils.rearth import SceneRenderer
+from utils.other import execute_external_python_script
 
 
 @shared_task
@@ -86,7 +88,7 @@ def execute_render_task(render_id):
         }
 
         index = 0
-        delta_progress = 1 / render_task.target_models.count() * render_task.scene_models.count() * 0.9
+        delta_progress = 1 / render_task.target_models.count() * render_task.scene_models.count() * 0.8
         for target_model in render_task.target_models.all():
             for scene_model in render_task.scene_models.all():
                 config.update({
@@ -99,8 +101,22 @@ def execute_render_task(render_id):
                 index, _ = SceneRenderer.main(config)
                 render_task.render_progress += delta_progress
                 render_task.save()
+        print("渲染完成")
+
+        # 导入FiftyOne
+        script_path = os.path.join(settings.BASE_DIR, "utils", "fifty_one", "show_in_fiftyone.py")
+        dataset_path = os.path.join(render_task.rendered_result_dir.path, "Dataset")
+        dataset_name = str(render_id)
+        execute_external_python_script.main(settings.FIFTYONE_ENV, script_path, dataset_path, dataset_name)
+
+        render_task.render_progress = 1
+        render_task.save()
+
         return "渲染完成"
     except Exception as e:
         import logging
         logging.error(f"渲染失败: {str(e)}")
         return "渲染失败"
+
+
+

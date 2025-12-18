@@ -1,6 +1,7 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="DjangoCompose" type="CompoundRunConfigurationType">
     <toRun name="RealEarthStudio" type="Python.DjangoServer" />
+    <toRun name="StartFiftyOne" type="PythonConfigurationType" />
     <toRun name="Celery" type="ShConfigurationType" />
     <method v="2" />
   </configuration>

@@ -6,13 +6,15 @@ import uuid
 from django.db import models
 from django.utils import timezone
 from django.core.exceptions import ValidationError
-from django.db.models.signals import post_delete
+from django.db.models.signals import post_delete, m2m_changed
 from django.dispatch import receiver
+from utils.other import execute_external_python_script
 
 import shutil
 
 from RealEarthStudio import settings
 from app1_model_management.models import TargetModel, SceneModel
+from dirtyfields import DirtyFieldsMixin
 
 
 # ====== 验证器 ======
@@ -50,7 +52,7 @@ def rendered_result_path(instance, filename):
     return os.path.join("Render", f"{instance.render_time}-{instance.render_id}")
 
 
-class RenderingTask(models.Model):
+class RenderingTask(models.Model, DirtyFieldsMixin):
     # 任务信息
     render_id = models.UUIDField("渲染ID", default=uuid.uuid4, editable=False, unique=True,
                                  help_text="渲染任务的唯一标识")
@@ -122,6 +124,19 @@ class RenderingTask(models.Model):
     def save(self, *args, **kwargs):
         self.full_clean()
 
+        dirty_fields = self.get_dirty_fields()
+        if dirty_fields:
+            # 检查特定字段是否发生变化
+            monitor_fields = ['sun_azimuth', 'sun_elevation', 'camera_distances', 'camera_elevations',
+                              'camera_rotation_step', 'image_width', 'image_height', 'renderer_type']
+
+            changed_monitored_fields = [field for field in monitor_fields if field in dirty_fields]
+            if changed_monitored_fields:
+                delete_dataset(self)
+                delete_dataset_in_fifty_one(self)
+                if self.render_progress == 1:
+                    self.render_progress = 0
+
         if not self.pk:
             # 创建目录（如果不存在）
             full_dir = os.path.join(settings.MEDIA_ROOT, "Render", str(self.render_id))
@@ -138,7 +153,54 @@ def delete_rendering_task_files(sender, instance, **kwargs):
     """
     渲染任务删除后，同时删除其对应的渲染结果文件夹
     """
+    delete_dataset(instance)
+    delete_dataset_in_fifty_one(instance)
+
+
+def handle_m2m_change(sender, instance, action, **kwargs):
+    """
+    统一处理多对多关系变化
+    """
+    delete_dataset(instance)
+    delete_dataset_in_fifty_one(instance)
+    instance.render_progress = 0
+    instance.save()
+
+
+@receiver(m2m_changed, sender=RenderingTask.target_models.through)
+def target_models_changed(sender, instance, action, **kwargs):
+    """
+    监听 target_models 多对多关系变化
+    """
+    handle_m2m_change(sender, instance, action, **kwargs)
+
+
+@receiver(m2m_changed, sender=RenderingTask.scene_models.through)
+def scene_models_changed(sender, instance, action, **kwargs):
+    """
+    监听 scene_models 多对多关系变化
+    """
+    handle_m2m_change(sender, instance, action, **kwargs)
+
+
+def delete_dataset(instance):
+    """
+    删除数据集
+    """
     if instance.rendered_result_dir:
         folder_dir = instance.rendered_result_dir.path
         if os.path.isdir(folder_dir):
             shutil.rmtree(folder_dir)
+
+
+def delete_dataset_in_fifty_one(instance):
+    """
+    删除FiftyOne数据集
+    """
+    if instance.rendered_result_dir:
+        folder_dir = instance.rendered_result_dir.path
+        if instance.render_progress == 1:
+            script_path = os.path.join(settings.BASE_DIR, "utils", "fifty_one", "delete_datasets.py")
+            dataset_path = os.path.join(folder_dir, "Dataset")
+            dataset_name = str(instance.render_id)
+            execute_external_python_script.main(settings.FIFTYONE_ENV, script_path, dataset_path, dataset_name)
