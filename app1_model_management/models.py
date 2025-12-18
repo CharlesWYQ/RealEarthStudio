@@ -3,6 +3,8 @@
 
 from django.db import models
 from django.utils import timezone
+from django.db.models.signals import post_delete, m2m_changed
+from django.dispatch import receiver
 import uuid
 import os
 
@@ -82,7 +84,7 @@ class Category(models.Model):
 
 
 class TargetModel(models.Model):
-    model_id = models.UUIDField(verbose_name="模型ID", default=uuid.uuid4(), editable=False, unique=True,
+    model_id = models.UUIDField(verbose_name="模型ID", default=uuid.uuid4, editable=False, unique=True,
                                 help_text="目标模型的唯一标识")
     uploaded_at = models.DateTimeField(verbose_name="上传时间", default=timezone.now)
     category = models.ManyToManyField(verbose_name="模型类别", to=Category, blank=True, help_text="模型所属的类别")
@@ -126,7 +128,7 @@ class TargetModel(models.Model):
 
 
 class SceneModel(models.Model):
-    model_id = models.UUIDField(verbose_name="模型ID", default=uuid.uuid4(), editable=False,unique=True,
+    model_id = models.UUIDField(verbose_name="模型ID", default=uuid.uuid4, editable=False, unique=True,
                                 help_text="场景模型的唯一标识")
     uploaded_at = models.DateTimeField(verbose_name="上传时间", default=timezone.now)
     category = models.ManyToManyField(verbose_name="模型类别", to=Category, blank=True, help_text="模型所属的类别")
@@ -157,13 +159,67 @@ class SceneModel(models.Model):
                 pass  # 新对象，无需处理
         super().save(*args, **kwargs)
 
-    def delete(self, *args, **kwargs):
-        # 删除文件系统中的文件
-        if self.file:
-            # 获取文件的绝对路径
-            file_path = self.file.path
-            # 如果文件存在则删除
-            if os.path.isfile(file_path):
-                os.remove(file_path)
-        # 调用父类的delete方法删除数据库记录
-        super().delete(*args, **kwargs)
+
+@receiver(post_delete, sender=TargetModel)
+def delete_target_model_file(sender, instance, **kwargs):
+    """
+    目标模型删除后，同时删除其对应的物理文件
+    """
+    if instance.file:
+        file_path = instance.file.path
+        if os.path.isfile(file_path):
+            os.remove(file_path)
+
+
+@receiver(post_delete, sender=SceneModel)
+def delete_scene_model_file(sender, instance, **kwargs):
+    """
+    场景模型删除后，同时删除其对应的物理文件
+    """
+    if instance.file:
+        file_path = instance.file.path
+        if os.path.isfile(file_path):
+            os.remove(file_path)
+
+
+@receiver(m2m_changed, sender=TargetModel.category.through)
+def sync_target_model_parent_categories(sender, instance, action, pk_set, **kwargs):
+    """
+    当目标模型的分类发生变化时，自动添加父级分类
+    """
+    if action == "post_add":
+        # 获取所有新增的分类
+        new_categories = Category.objects.filter(pk__in=pk_set)
+        parent_categories_to_add = set()
+
+        # 收集所有新增分类的父级分类
+        for category in new_categories:
+            parent = category.parent
+            while parent:
+                parent_categories_to_add.add(parent.pk)
+                parent = parent.parent
+
+        # 添加所有父级分类到当前模型实例
+        if parent_categories_to_add:
+            instance.category.add(*parent_categories_to_add)
+
+# @receiver(m2m_changed, sender=SceneModel.category.through)
+# def sync_scene_model_parent_categories(sender, instance, action, pk_set, **kwargs):
+#     """
+#     当场景模型的分类发生变化时，自动添加父级分类
+#     """
+#     if action == "post_add":
+#         # 获取所有新增的分类
+#         new_categories = Category.objects.filter(pk__in=pk_set)
+#         parent_categories_to_add = set()
+#
+#         # 收集所有新增分类的父级分类
+#         for category in new_categories:
+#             parent = category.parent
+#             while parent:
+#                 parent_categories_to_add.add(parent.pk)
+#                 parent = parent.parent
+#
+#         # 添加所有父级分类到当前模型实例
+#         if parent_categories_to_add:
+#             instance.category.add(*parent_categories_to_add)

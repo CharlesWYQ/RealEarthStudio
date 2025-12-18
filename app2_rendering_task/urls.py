@@ -13,6 +13,7 @@ from . import views
 app_name = 'app2_rendering_task'
 
 urlpatterns = [
-    # 子路由
-    # path('start_render', views.RenderingTaskListView.as_view(), name='list'),
+    # 开始渲染
+    path('<uuid:render_id>/start_render/', views.StartRender.as_view(), name='start_render_view'),
+    path('<uuid:render_id>/show_dataset/', views.ShowDataset.as_view(), name='show_dataset_view'),
 ]

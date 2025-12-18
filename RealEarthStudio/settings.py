@@ -117,6 +117,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# rest_framework 配置
 REST_FRAMEWORK = {
     # 默认权限：需要登录才能访问（可根据需求调整）
     'DEFAULT_PERMISSION_CLASSES': [
@@ -164,6 +165,21 @@ REST_FRAMEWORK = {
         'user': '1000/day',  # 登录用户
     },
 }
+
+# Celery 配置
+CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'  # 使用 Redis 作为消息代理
+CELERY_RESULT_BACKEND = 'django-db'  # 将结果存入数据库（需安装 django-celery-results）
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Asia/Shanghai'
+CELERY_WORKER_POOL = "solo"
+# CELERY_TASK_STORE_RESULT = False
+
+# 如果使用 django-celery-results，添加到 INSTALLED_APPS
+INSTALLED_APPS += [
+    'django_celery_results',
+]
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/

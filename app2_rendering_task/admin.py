@@ -1,6 +1,7 @@
 from django.contrib import admin
 from .models import *
 from django.utils.safestring import mark_safe
+from django.urls import reverse
 
 
 @admin.register(RenderingTask)
@@ -9,7 +10,7 @@ class RenderingTaskAdmin(admin.ModelAdmin):
                     'render_progress_display']
     search_fields = ['render_id']
     list_filter = ['renderer_type', 'render_time']
-    readonly_fields = ['render_id', 'render_time', 'render_progress', 'rendered_result']
+    readonly_fields = ['render_id', 'render_time', 'render_progress', 'rendered_result_dir']
 
     # 字段分组显示
     fieldsets = (
@@ -29,15 +30,17 @@ class RenderingTaskAdmin(admin.ModelAdmin):
             'fields': ('image_width', 'image_height')
         }),
         ('渲染结果', {
-            'fields': ('rendered_result',)
+            'fields': ('rendered_result_dir',)
         })
     )
 
     @admin.display(description="渲染状态")
     def render_progress_display(self, obj):
+        url_render = reverse('app2_rendering_task:start_render_view', args=[obj.render_id])
+        url_show = "#"
         if obj.render_progress == 0:
-            # 如果状态是pending，显示一个链接
-            return mark_safe(f'<a href="#">开始渲染</a>')
+            return mark_safe(f'<a href="{url_render}">开始渲染</a>')
+        elif obj.render_progress == 1:
+            return mark_safe(f'<a href="{url_show}" target="_blank">查看结果</a> | <a href="{url_render}">重新渲染</a>')
         else:
-            # 否则显示当前状态
-            return f"{obj.render_progress}%"
+            return f"{obj.render_progress * 100:.2f}%"
