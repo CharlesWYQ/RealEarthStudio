@@ -3,10 +3,14 @@ from .models import *
 from django.utils.safestring import mark_safe
 from django.urls import reverse
 
+from django_celery_results.apps import CeleryResultConfig
+from django_celery_results.models import GroupResult, TaskResult
+from django_celery_results.admin import GroupResultAdmin, TaskResultAdmin
+
 
 @admin.register(RenderingTask)
 class RenderingTaskAdmin(admin.ModelAdmin):
-    list_display = ['render_id', 'render_time', 'renderer_type', 'image_width', 'image_height',
+    list_display = ['render_id', 'render_type', 'render_time', 'renderer_type', 'image_width', 'image_height',
                     'render_progress_display']
     search_fields = ['render_id']
     list_filter = ['renderer_type', 'render_time']
@@ -15,7 +19,7 @@ class RenderingTaskAdmin(admin.ModelAdmin):
     # 字段分组显示
     fieldsets = (
         ('任务信息', {
-            'fields': ('render_id', 'render_time', 'renderer_type', 'render_progress')
+            'fields': ('render_id', 'render_time', 'render_type', 'renderer_type', 'render_progress')
         }),
         ('模型配置', {
             'fields': ('target_models', 'scene_models')
@@ -46,3 +50,30 @@ class RenderingTaskAdmin(admin.ModelAdmin):
             return mark_safe(f'{obj.render_progress * 100:.2f}% | <a href="{url_render}">重新渲染</a>')
         else:
             return f"{obj.render_progress * 100:.2f}%"
+
+
+class CustomGroupResultAdmin(GroupResultAdmin):
+    date_hierarchy = None  # 禁用日期层级导航
+
+
+class CustomTaskResultAdmin(TaskResultAdmin):
+    date_hierarchy = None  # 禁用日期层级导航
+
+
+# 重新注册
+try:
+    admin.site.unregister(GroupResult)
+    admin.site.unregister(TaskResult)
+except:
+    pass
+
+admin.site.register(GroupResult, CustomGroupResultAdmin)
+admin.site.register(TaskResult, CustomTaskResultAdmin)
+
+GroupResult._meta.verbose_name = "组结果"
+GroupResult._meta.verbose_name_plural = "组结果"
+
+TaskResult._meta.verbose_name = "任务结果"
+TaskResult._meta.verbose_name_plural = "任务结果"
+
+CeleryResultConfig.verbose_name = "🏷️ Celery 任务执行结果管理"

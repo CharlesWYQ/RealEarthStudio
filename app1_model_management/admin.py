@@ -9,7 +9,7 @@ admin.site.index_title = '数据维护管理系统'
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ['model_type', 'id', 'name', 'parent', 'level', 'is_leaf_status']
+    list_display = ['model_type', 'name', 'parent', 'level', 'is_leaf_status', 'model_count']
     search_fields = ['name']
     ordering = ['level', 'name']
     list_display_links = ['name']
@@ -46,12 +46,19 @@ class CategoryAdmin(admin.ModelAdmin):
     def is_leaf_status(self, obj):
         return obj.is_leaf
 
+    @admin.display(description="模型数量")
+    def model_count(self, obj):
+        # 计算关联到此分类的目标模型和场景模型数量
+        target_count = TargetModel.objects.filter(category=obj).count()
+        scene_count = SceneModel.objects.filter(category=obj).count()
+        return target_count + scene_count
 
-class BaseModelAdmin(admin.ModelAdmin):
+
+class BaseCategoryAdmin(admin.ModelAdmin):
     # 共有字段展示
     list_display = ['model_id', 'get_categories', 'uploaded_at', 'file_link']
     list_display_links = ['model_id']
-    list_filter = ['category', 'uploaded_at']
+    # list_filter = ['category', 'uploaded_at']
     search_fields = ['category', 'model_id']
     readonly_fields = ['model_id', 'uploaded_at', 'file_preview']
 
@@ -63,6 +70,39 @@ class BaseModelAdmin(admin.ModelAdmin):
             'fields': ('file', 'file_preview')
         }),
     )
+
+    category_model_types = []
+
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        # 限制Category只能选择叶子节点
+        if db_field.name == "category" and self.category_model_types:
+            # 只显示叶子节点（没有子分类的分类）
+            kwargs["queryset"] = Category.objects.filter(
+                model_type__in=self.category_model_types,
+                children__isnull=True
+            )
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
+
+    def get_list_filter(self, request):
+        # 动态设置list_filter，使用缓存避免重复查询
+        parent_categories = Category.objects.filter(
+            model_type__in=self.category_model_types,
+            level=1
+        )
+
+        class ParentCategoryFilter(admin.SimpleListFilter):
+            title = '分类'
+            parameter_name = 'category'
+
+            def lookups(self, _request, model_admin):
+                return [(cat.id, str(cat)) for cat in parent_categories]
+
+            def queryset(self, _request, queryset):
+                if self.value():
+                    return queryset.filter(category__parent_id=self.value())
+                return queryset
+
+        return [ParentCategoryFilter, 'uploaded_at']
 
     @admin.display(description="类别")
     def get_categories(self, obj):
@@ -93,22 +133,10 @@ class BaseModelAdmin(admin.ModelAdmin):
 
 
 @admin.register(TargetModel)
-class TargetModelAdmin(BaseModelAdmin):
-    def formfield_for_manytomany(self, db_field, request, **kwargs):
-        # 限制Category只能选择叶子节点
-        if db_field.name == "category":
-            # 只显示叶子节点（没有子分类的分类）
-            kwargs["queryset"] = Category.objects.filter(model_type__in=['general', 'target']).filter(children__isnull=True)
-        return super().formfield_for_manytomany(db_field, request, **kwargs)
+class TargetModelAdmin(BaseCategoryAdmin):
+    category_model_types = ['general', 'target']
 
 
 @admin.register(SceneModel)
-class SceneModelAdmin(BaseModelAdmin):
-    def formfield_for_manytomany(self, db_field, request, **kwargs):
-        # 限制Category只能选择叶子节点
-        if db_field.name == "category":
-            # 只显示叶子节点（没有子分类的分类）
-            kwargs["queryset"] = Category.objects.filter(model_type__in=['general', 'scene']).filter(
-                children__isnull=True)
-        return super().formfield_for_manytomany(db_field, request, **kwargs)
-
+class SceneModelAdmin(BaseCategoryAdmin):
+    category_model_types = ['general', 'scene']

@@ -1,5 +1,6 @@
 # python manage.py makemigrations app1_model_management
 # python manage.py migrate app1_model_management
+# python manage.py squashmigrations app1_model_management 0001 0002
 
 from django.db import models
 from django.utils import timezone
@@ -181,32 +182,11 @@ def delete_scene_model_file(sender, instance, **kwargs):
         if os.path.isfile(file_path):
             os.remove(file_path)
 
-
-@receiver(m2m_changed, sender=TargetModel.category.through)
-def sync_target_model_parent_categories(sender, instance, action, pk_set, **kwargs):
-    """
-    当目标模型的分类发生变化时，自动添加父级分类
-    """
-    if action == "post_add":
-        # 获取所有新增的分类
-        new_categories = Category.objects.filter(pk__in=pk_set)
-        parent_categories_to_add = set()
-
-        # 收集所有新增分类的父级分类
-        for category in new_categories:
-            parent = category.parent
-            while parent:
-                parent_categories_to_add.add(parent.pk)
-                parent = parent.parent
-
-        # 添加所有父级分类到当前模型实例
-        if parent_categories_to_add:
-            instance.category.add(*parent_categories_to_add)
-
-# @receiver(m2m_changed, sender=SceneModel.category.through)
-# def sync_scene_model_parent_categories(sender, instance, action, pk_set, **kwargs):
+#
+# @receiver(m2m_changed, sender=TargetModel.category.through)
+# def sync_target_model_parent_categories(sender, instance, action, pk_set, **kwargs):
 #     """
-#     当场景模型的分类发生变化时，自动添加父级分类
+#     当目标模型的分类发生变化时，自动添加父级分类
 #     """
 #     if action == "post_add":
 #         # 获取所有新增的分类
