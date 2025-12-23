@@ -1,6 +1,6 @@
 # python manage.py makemigrations app1_model_management
 # python manage.py migrate app1_model_management
-# python manage.py squashmigrations app1_model_management 0001 0002
+# python manage.py squashmigrations app1_model_management 0009 0012
 
 from django.db import models
 from django.utils import timezone
@@ -84,6 +84,60 @@ class Category(models.Model):
         return not self.children.exists()
 
 
+class SceneModelFile(models.Model):
+    model_id = models.UUIDField(verbose_name="模型ID", default=uuid.uuid4, editable=False, unique=True,
+                                help_text="场景模型的唯一标识")
+    uploaded_at = models.DateTimeField(verbose_name="上传时间", default=timezone.now)
+    category = models.ManyToManyField(verbose_name="模型类别", to=Category, blank=True, help_text="模型所属的类别")
+    file = models.FileField(
+        verbose_name="模型文件",
+        upload_to=scene_model_upload_path,
+        help_text="请上传 *.fbx 格式的3D模型文件"
+    )
+
+    class Meta:
+        verbose_name = "02-场景模型文件"
+        verbose_name_plural = "02-场景模型文件"
+        ordering = ['-uploaded_at']
+
+    def __str__(self):
+        return f"{'、'.join([obj.name for obj in self.category.all()])} ({self.model_id})"
+
+    def save(self, *args, **kwargs):
+        # 如果这是现有对象且文件字段被修改，则删除旧文件
+        if self.pk:  # 检查是否为现有对象
+            try:
+                old_instance = SceneModelFile.objects.get(pk=self.pk)
+                # 如果文件字段发生变化，删除旧文件
+                if old_instance.file and old_instance.file != self.file:
+                    if os.path.isfile(old_instance.file.path):
+                        os.remove(old_instance.file.path)
+            except SceneModelFile.DoesNotExist:
+                pass  # 新对象，无需处理
+        super().save(*args, **kwargs)
+
+
+def default_points():
+    return [[0, 0, 0], [0, 1, 0]]
+
+
+class SceneModel(models.Model):
+    scene_id = models.UUIDField(verbose_name="场景ID", default=uuid.uuid4, editable=False, unique=True,
+                                help_text="场景的唯一标识")
+    scene_model = models.ForeignKey(verbose_name="场景模型", to=SceneModelFile, blank=False, null=False,
+                                    on_delete=models.CASCADE, help_text="场景模型文件")
+    points = models.JSONField("控制点", default=default_points, blank=True,
+                              help_text="场景模型控制点")
+
+    class Meta:
+        verbose_name = "03-场景模型"
+        verbose_name_plural = "03-场景模型"
+        ordering = ['scene_model', 'scene_id']
+
+    def __str__(self):
+        return f"{'、'.join([obj.name for obj in self.scene_model.category.all()])} ({self.scene_id})"
+
+
 class TargetModel(models.Model):
     model_id = models.UUIDField(verbose_name="模型ID", default=uuid.uuid4, editable=False, unique=True,
                                 help_text="目标模型的唯一标识")
@@ -96,12 +150,12 @@ class TargetModel(models.Model):
     )
 
     class Meta:
-        verbose_name = "02-目标模型"
-        verbose_name_plural = "02-目标模型"
+        verbose_name = "04-目标模型"
+        verbose_name_plural = "04-目标模型"
         ordering = ['-uploaded_at']
 
     def __str__(self):
-        return f"{self.model_id}"
+        return f"{'、'.join([obj.name for obj in self.category.all()])} ({self.model_id})"
 
     def save(self, *args, **kwargs):
         # 如果这是现有对象且文件字段被修改，则删除旧文件
@@ -128,37 +182,15 @@ class TargetModel(models.Model):
         super().delete(*args, **kwargs)
 
 
-class SceneModel(models.Model):
-    model_id = models.UUIDField(verbose_name="模型ID", default=uuid.uuid4, editable=False, unique=True,
-                                help_text="场景模型的唯一标识")
-    uploaded_at = models.DateTimeField(verbose_name="上传时间", default=timezone.now)
-    category = models.ManyToManyField(verbose_name="模型类别", to=Category, blank=True, help_text="模型所属的类别")
-    file = models.FileField(
-        verbose_name="模型文件",
-        upload_to=scene_model_upload_path,
-        help_text="请上传 *.fbx 格式的3D模型文件"
-    )
-
-    class Meta:
-        verbose_name = "03-场景模型"
-        verbose_name_plural = "03-场景模型"
-        ordering = ['-uploaded_at']
-
-    def __str__(self):
-        return f"{self.model_id}"
-
-    def save(self, *args, **kwargs):
-        # 如果这是现有对象且文件字段被修改，则删除旧文件
-        if self.pk:  # 检查是否为现有对象
-            try:
-                old_instance = SceneModel.objects.get(pk=self.pk)
-                # 如果文件字段发生变化，删除旧文件
-                if old_instance.file and old_instance.file != self.file:
-                    if os.path.isfile(old_instance.file.path):
-                        os.remove(old_instance.file.path)
-            except SceneModel.DoesNotExist:
-                pass  # 新对象，无需处理
-        super().save(*args, **kwargs)
+@receiver(post_delete, sender=SceneModelFile)
+def delete_scene_model_file(sender, instance, **kwargs):
+    """
+    场景模型删除后，同时删除其对应的物理文件
+    """
+    if instance.file:
+        file_path = instance.file.path
+        if os.path.isfile(file_path):
+            os.remove(file_path)
 
 
 @receiver(post_delete, sender=TargetModel)
@@ -170,36 +202,3 @@ def delete_target_model_file(sender, instance, **kwargs):
         file_path = instance.file.path
         if os.path.isfile(file_path):
             os.remove(file_path)
-
-
-@receiver(post_delete, sender=SceneModel)
-def delete_scene_model_file(sender, instance, **kwargs):
-    """
-    场景模型删除后，同时删除其对应的物理文件
-    """
-    if instance.file:
-        file_path = instance.file.path
-        if os.path.isfile(file_path):
-            os.remove(file_path)
-
-#
-# @receiver(m2m_changed, sender=TargetModel.category.through)
-# def sync_target_model_parent_categories(sender, instance, action, pk_set, **kwargs):
-#     """
-#     当目标模型的分类发生变化时，自动添加父级分类
-#     """
-#     if action == "post_add":
-#         # 获取所有新增的分类
-#         new_categories = Category.objects.filter(pk__in=pk_set)
-#         parent_categories_to_add = set()
-#
-#         # 收集所有新增分类的父级分类
-#         for category in new_categories:
-#             parent = category.parent
-#             while parent:
-#                 parent_categories_to_add.add(parent.pk)
-#                 parent = parent.parent
-#
-#         # 添加所有父级分类到当前模型实例
-#         if parent_categories_to_add:
-#             instance.category.add(*parent_categories_to_add)

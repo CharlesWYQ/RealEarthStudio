@@ -55,8 +55,8 @@ def execute_render_task(render_id):
             f.write(f"场景模型数量: {render_task.scene_models.count()}\n")
             if render_task.scene_models.exists():
                 for i, scene_model in enumerate(render_task.scene_models.all(), 1):
-                    category_names = ", ".join([str(cat.name) for cat in scene_model.category.all()])
-                    f.write(f"  场景模型{i}: {scene_model.model_id} ({category_names})\n")
+                    category_names = ", ".join([str(cat.name) for cat in scene_model.scene_model.category.all()])
+                    f.write(f"  场景模型{i}: {scene_model.scene_model.model_id} ({category_names})\n")
 
             f.write(f"\n=== 光照参数 ===\n")
             f.write(f"日光方位角: {render_task.sun_azimuth}°\n")
@@ -76,6 +76,7 @@ def execute_render_task(render_id):
             "target_model_class": None,
             "scene_model_path": None,
             "scene_model_class": None,
+            "scene_model_point": None,
             "output_dir": render_task.rendered_result_dir.path,
             "renderer": "eevee",
             "resolution": [render_task.image_width, render_task.image_height],
@@ -94,8 +95,9 @@ def execute_render_task(render_id):
                 config.update({
                     "target_model_path": target_model.file.path,
                     "target_model_class": [cat.name for cat in target_model.category.all()],
-                    "scene_model_path": scene_model.file.path,
-                    "scene_model_class": [cat.name for cat in scene_model.category.all()],
+                    "scene_model_path": scene_model.scene_model.file.path,
+                    "scene_model_class": [cat.name for cat in scene_model.scene_model.category.all()],
+                    "scene_model_point": scene_model.points,
                     "index": index,
                 })
                 index, _ = SceneRenderer.main(config)

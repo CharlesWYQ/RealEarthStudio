@@ -14,7 +14,7 @@ import string
 import bpy
 import math
 import json
-from mathutils import Vector
+from mathutils import Vector, Matrix
 from pathlib import Path
 import numpy as np
 
@@ -24,7 +24,7 @@ from bpy_extras.object_utils import world_to_camera_view
 class SceneRenderer:
     """ 场景渲染 """
 
-    def __init__(self, target_model_path, target_model_class, scene_model_path, scene_model_class,
+    def __init__(self, target_model_path, target_model_class, scene_model_path, scene_model_class, scene_model_point,
                  render_id=None, output_dir=r"D:\Projects\RealEarthStudio\Blender照片", index=0):
         """
         初始化对象
@@ -44,9 +44,9 @@ class SceneRenderer:
         self.annotations_file = os.path.join(self.output_dir, "metadata.json")
 
         # 合并目标模型与场景模型
-        self.scene_model_name = Path(scene_model_path).stem
         self.target_model_name = Path(target_model_path).stem
-        self.bpy = self.merge_models(scene_model_path, target_model_path)
+        self.scene_model_name = Path(scene_model_path).stem
+        self.bpy = self.merge_models(scene_model_path, target_model_path, scene_model_point)
         self.target_obj = self.bpy.data.objects.get("targetModel")
         self.scene = self.bpy.context.scene
         if not self.target_obj:
@@ -95,14 +95,17 @@ class SceneRenderer:
         return f"{time_str}_{random_suffix}"
 
     @staticmethod
-    def merge_models(scene_model_path, target_model_path):
+    def merge_models(scene_model_path, target_model_path, scene_model_point=None):
         """
         合并场景模型
         :param scene_model_path: 场景模型路径
         :param target_model_path: 目标模型路径
+        :param scene_model_point: 场景模型位置调整参数
         """
 
         # 确保 FBX 文件存在
+        if scene_model_point is None:
+            scene_model_point = [[0, 0, 0], [0, 1, 0]]
         if not os.path.exists(scene_model_path):
             raise FileNotFoundError(f"场景模型文件不存在: {scene_model_path}")
         if not os.path.exists(target_model_path):
@@ -114,25 +117,40 @@ class SceneRenderer:
 
         # 导入场景模型
         bpy.ops.import_scene.fbx(filepath=scene_model_path)
-        scene_objects = set(bpy.data.objects)
 
-        # 创建空对象（位于世界原点）
-        bpy.ops.object.empty_add(type='PLAIN_AXES', location=(0, 0, 0))
-        empty_obj = bpy.context.active_object
-        empty_obj.name = "sceneModel"
+        if scene_model_point != [[0, 0, 0], [0, 1, 0]]:
+            p1 = Vector(scene_model_point[0])
+            p2 = Vector(scene_model_point[1])
+            direction = p2 - p1
+            dir_xy = Vector((direction.x, direction.y, 0.0))
+            if dir_xy.length == 0:
+                pass
+            else:
+                delta_angle = -math.pi / 2 - math.atan2(dir_xy.y, dir_xy.x)
+                while delta_angle > math.pi:
+                    delta_angle -= 2 * math.pi
+                while delta_angle < -math.pi:
+                    delta_angle += 2 * math.pi
+                rot_matrix = Matrix.Rotation(delta_angle, 4, 'Z')
+                bpy.ops.object.empty_add(type='PLAIN_AXES', location=p1)
+                parent_empty = bpy.context.active_object
+                parent_empty.name = "sceneModel"
 
-        # 清除空对象的初始选择
-        bpy.ops.object.select_all(action='DESELECT')
+                mesh_objects = [obj for obj in bpy.data.objects if obj.type == 'MESH']
+                for obj in mesh_objects:
+                    world_mat = obj.matrix_world.copy()
+                    obj.parent = parent_empty
+                    obj.matrix_world = world_mat
 
-        # 将所有导入的对象设为空对象的子级
-        for obj in list(scene_objects):
-            obj.select_set(True)  # 选中子对象
+                # 安全应用旋转：保留位置和缩放
+                scale = parent_empty.scale.copy()
 
-        empty_obj.select_set(True)  # 最后选中父对象（空对象）
-        bpy.context.view_layer.objects.active = empty_obj  # 设为空对象为活动对象
+                # 应用相对旋转（乘以当前矩阵）
+                parent_empty.matrix_world @= rot_matrix
 
-        # 执行父子绑定（保持变换）
-        bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
+                # 恢复位置和缩放（防止浮点误差）
+                parent_empty.scale = scale
+                parent_empty.location = (0, 0, 0)
 
         # 导入目标模型
         bpy.ops.import_scene.fbx(filepath=target_model_path)
@@ -450,6 +468,7 @@ class SceneRenderer:
 def main(config: dict):
     scene_renderer_object = SceneRenderer(config['target_model_path'], config['target_model_class'],
                                           config['scene_model_path'], config['scene_model_class'],
+                                          config['scene_model_point'],
                                           render_id=config['render_id'], output_dir=config['output_dir'],
                                           index=config['index'])
 
@@ -457,7 +476,7 @@ def main(config: dict):
     scene_renderer_object.configure_sun(azimuth_deg=config['sun_azimuth_deg'],
                                         elevation_deg=config['sun_elevation_deg'])
 
-    # 保存模型
+    # # 保存模型
     # scene_renderer_object.export_blender_file(scene_renderer_object.output_dir,
     #                                           f'image_{scene_renderer_object.index + 1:04d}.blend')
 
@@ -479,7 +498,10 @@ if __name__ == '__main__':
         "render_id": "20251218_103729_ztwvNP",
         "target_model_path": r"D:\Projects\RealEarthStudio\Blender目标模型\01\宾利.000.fbx",
         "target_model_class": ['宾利', '车辆'],
-        "scene_model_path": r"D:\Projects\RealEarthStudio\Blender场景模型\street_0001.fbx",
+        "scene_model_path": r"D:\Projects\OSGB数据\台湾桃园市\Model\矩形_+002_+000\矩形_+002_+000.fbx",
+        "scene_model_point": [
+            [92.7855, -137.2836, 97.3630], [97.7460, -136.9352, 97.2855],
+        ],
         "scene_model_class": ["街道"],
         "output_dir": r"D:\Projects\RealEarthStudio\Blender照片",
         "renderer": "eevee",
@@ -491,30 +513,5 @@ if __name__ == '__main__':
         "camera_rotation_step_deg": 180,
         "index": 2,
     }
-    index, render_id = main(CONFIG)
-    print(f"渲染任务 {render_id} 已渲染 {index} 张图片")
-
-    # # 合并模型
-    # TARGET_MODEL_PATH = r"D:\Projects\RealEarthStudio\Blender目标模型\01\宾利.000.fbx"
-    # SCENE_MODEL_PATH = r"D:\Projects\RealEarthStudio\Blender场景模型\street_0001.fbx"
-    # scene_renderer_object = SceneRenderer(TARGET_MODEL_PATH, ['宾利', '车辆'],
-    #                                       SCENE_MODEL_PATH, ['街道'],
-    #                                       index=15)
-    #
-    # # 修改日光参数
-    # scene_renderer_object.configure_sun(azimuth_deg=45, elevation_deg=60)
-    #
-    # # 保存模型
-    # scene_renderer_object.export_blender_file(r"D:\Projects\RealEarthStudio\Blender模型\合并模型.blend")
-    #
-    # # 修改分辨率
-    # scene_renderer_object.set_resolution(1920, 1080)
-    #
-    # # 修改渲染器
-    # scene_renderer_object.set_renderer("eevee")
-    #
-    # # 批量渲染
-    # DISTANCE_LIST = [20]
-    # ELEVATION_DEG_LIST = [30]
-    # ROTATION_STEP_DEG = 90
-    # scene_renderer_object.batch_render_with_annotations(DISTANCE_LIST, ELEVATION_DEG_LIST, ROTATION_STEP_DEG)
+    _index, _render_id = main(CONFIG)
+    print(f"渲染任务 {_render_id} 已渲染 {_index} 张图片")

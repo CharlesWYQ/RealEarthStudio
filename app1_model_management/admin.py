@@ -37,7 +37,7 @@ class CategoryAdmin(admin.ModelAdmin):
 
             def queryset(self, _request, queryset):
                 if self.value():
-                    return queryset.filter(parent_id=self.value())
+                    return queryset.filter(parent_id=self.value()).distinct()
                 return queryset
 
         return ['model_type', ParentCategoryFilter, 'level']
@@ -50,15 +50,60 @@ class CategoryAdmin(admin.ModelAdmin):
     def model_count(self, obj):
         # 计算关联到此分类的目标模型和场景模型数量
         target_count = TargetModel.objects.filter(category=obj).count()
-        scene_count = SceneModel.objects.filter(category=obj).count()
+        scene_count = SceneModelFile.objects.filter(category=obj).count()
         return target_count + scene_count
+
+
+@admin.register(SceneModel)
+class SceneModelAdmin(admin.ModelAdmin):
+    list_display = ['scene_id', 'get_categories', 'points_display']
+    search_fields = ['scene_id', 'scene_model__file']
+    readonly_fields = ['scene_id']
+
+    fieldsets = (
+        ('基本信息', {
+            'fields': ('scene_id', 'scene_model')
+        }),
+        ('控制点信息', {
+            'fields': ('points',)
+        }),
+    )
+
+    def get_list_filter(self, request):
+        # 动态设置list_filter，使用缓存避免重复查询
+        class ParentCategoryFilter(admin.SimpleListFilter):
+            title = '分类'
+            parameter_name = 'category'
+
+            def lookups(self, _request, model_admin):
+                return [(cat.id, str(cat)) for cat in
+                        Category.objects.filter(model_type__in=['general', 'scene'], level=1)]
+
+            def queryset(self, _request, queryset):
+                if self.value():
+                    return queryset.filter(scene_model__category=self.value()).distinct()
+                return queryset
+
+        return [ParentCategoryFilter]
+
+    @admin.display(description="分类")
+    def get_categories(self, obj):
+        """获取关联分类"""
+        categories = [cat.name for cat in obj.scene_model.category.all()]
+        return ", ".join(categories) if categories else "-"
+
+    @admin.display(description="控制点信息")
+    def points_display(self, obj):
+        """格式化显示控制点"""
+        if obj.points:
+            return mark_safe(f"起点: {obj.points[0]}<br>方向: {obj.points[1]}")
+        return "-"
 
 
 class BaseCategoryAdmin(admin.ModelAdmin):
     # 共有字段展示
     list_display = ['model_id', 'get_categories', 'uploaded_at', 'file_link']
     list_display_links = ['model_id']
-    # list_filter = ['category', 'uploaded_at']
     search_fields = ['category', 'model_id']
     readonly_fields = ['model_id', 'uploaded_at', 'file_preview']
 
@@ -99,7 +144,7 @@ class BaseCategoryAdmin(admin.ModelAdmin):
 
             def queryset(self, _request, queryset):
                 if self.value():
-                    return queryset.filter(category__parent_id=self.value())
+                    return queryset.filter(category__parent_id=self.value()).distinct()
                 return queryset
 
         return [ParentCategoryFilter, 'uploaded_at']
@@ -132,11 +177,17 @@ class BaseCategoryAdmin(admin.ModelAdmin):
         abstract = True  # 标记为抽象类，防止被注册成实际管理界面
 
 
+@admin.register(SceneModelFile)
+class SceneModelFileAdmin(BaseCategoryAdmin):
+    list_display = ['model_id', 'get_categories', 'uploaded_at', 'point_count', 'file_link']
+    category_model_types = ['general', 'scene']
+
+    @admin.display(description="控制点数量")
+    def point_count(self, obj):
+        # 计算关联到此分类的目标模型和场景模型数量
+        return SceneModel.objects.filter(scene_model_id=obj.id).count()
+
+
 @admin.register(TargetModel)
 class TargetModelAdmin(BaseCategoryAdmin):
     category_model_types = ['general', 'target']
-
-
-@admin.register(SceneModel)
-class SceneModelAdmin(BaseCategoryAdmin):
-    category_model_types = ['general', 'scene']

@@ -14,7 +14,7 @@ from utils.other import execute_external_python_script
 import shutil
 
 from RealEarthStudio import settings
-from app1_model_management.models import TargetModel, SceneModel
+from app1_model_management.models import SceneModelFile, SceneModel, TargetModel
 from dirtyfields import DirtyFieldsMixin
 
 
@@ -53,6 +53,14 @@ def rendered_result_path(instance, filename):
     return os.path.join("Render", f"{instance.render_time}-{instance.render_id}")
 
 
+def default_camera_distances():
+    return [100]
+
+
+def default_camera_elevations():
+    return [75]
+
+
 class RenderingTask(models.Model, DirtyFieldsMixin):
     # 任务信息
     render_id = models.UUIDField("渲染ID", default=uuid.uuid4, editable=False, unique=True,
@@ -66,10 +74,10 @@ class RenderingTask(models.Model, DirtyFieldsMixin):
     render_progress = models.FloatField("渲染进度", default=0.0, help_text="渲染任务的进度(0-1)")
 
     # 模型
-    target_models = models.ManyToManyField(TargetModel, verbose_name="目标模型", blank=True,
-                                           related_name="rendering_tasks")
     scene_models = models.ManyToManyField(SceneModel, verbose_name="场景模型", blank=True,
                                           related_name="rendering_tasks")
+    target_models = models.ManyToManyField(TargetModel, verbose_name="目标模型", blank=True,
+                                           related_name="rendering_tasks")
 
     # 日光参数
     sun_azimuth = models.FloatField("日光方位角", default=0.0, validators=[validate_azimuth],
@@ -78,10 +86,11 @@ class RenderingTask(models.Model, DirtyFieldsMixin):
                                       help_text="阳光照射的高低角（0°-90°）")
 
     # 相机参数
-    camera_distances = models.JSONField("相机距离", default=[100], blank=True,
+    camera_distances = models.JSONField("相机距离", default=default_camera_distances, blank=True,
                                         validators=[validate_positive_number_list],
                                         help_text="相机到目标的距离列表（正值）")
-    camera_elevations = models.JSONField("相机高低角", default=[75], blank=True, validators=[validate_elevation_list],
+    camera_elevations = models.JSONField("相机高低角", default=default_camera_elevations, blank=True,
+                                         validators=[validate_elevation_list],
                                          help_text="相机高低角列表（0°-90°）")
     camera_rotation_step = models.FloatField("相机方位角间隔", default=90, validators=[validate_azimuth],
                                              help_text="相机方位角采样间隔（0°-360°）")

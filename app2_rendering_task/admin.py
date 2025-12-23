@@ -22,7 +22,7 @@ class RenderingTaskAdmin(admin.ModelAdmin):
             'fields': ('render_id', 'render_time', 'render_type', 'renderer_type', 'render_progress')
         }),
         ('模型配置', {
-            'fields': ('target_models', 'scene_models')
+            'fields': ('scene_models', 'target_models')
         }),
         ('光照参数', {
             'fields': ('sun_azimuth', 'sun_elevation')

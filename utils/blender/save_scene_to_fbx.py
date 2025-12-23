@@ -2,9 +2,9 @@
 # @Time : 2025/12/23 上午8:23
 # @Author : CharlesWYQ
 # @Email : charleswyq@foxmail.com
-# @File : save_to_fbx.py
+# @File : save_scene_to_fbx.py
 # @Project : RealEarthStudio
-# @Details : 保存模型为fbx文件
+# @Details : 保存场景模型为fbx文件
 
 
 import bpy
@@ -13,7 +13,7 @@ import glob
 
 # ================== 配置区 ==================
 modelClass = "street"  # 修改为你想要的类型名
-output_dir = r"\\Mm-202311022138\DATA\Blender场景模型"  # 修改为你的导出文件夹路径
+output_dir = r"D:\Projects\RealEarthStudio\Blender场景模型"  # 修改为你的导出文件夹路径
 # ==========================================
 
 # 确保输出目录存在
