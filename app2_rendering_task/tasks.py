@@ -23,6 +23,7 @@ def execute_render_task(render_id):
     异步执行渲染任务
     """
     try:
+        print(f"⭕ 渲染任务：{render_id} 开始渲染")
         render_task = RenderingTask.objects.get(render_id=render_id)
         render_task.render_progress = 0
         render_task.save()
@@ -39,24 +40,32 @@ def execute_render_task(render_id):
             f.write(f"总像素数: {render_task.image_pixels}\n\n")
 
             f.write(f"=== 模型信息 ===\n")
-            f.write(f"目标模型数量: {render_task.target_models.count()}\n")
-            if render_task.target_models.exists():
-                for i, target_model in enumerate(render_task.target_models.all(), 1):
-                    all_categories = set(target_model.category.all())
-                    for cat in list(all_categories):
-                        parent = cat.parent
-                        while parent:
-                            all_categories.add(parent)
-                            parent = parent.parent
-
-                    category_names = ", ".join([str(cat.name) for cat in all_categories])
-                    f.write(f"  目标模型{i}: {target_model.model_id} ({category_names})\n")
-
+            scene_model_list = []
             f.write(f"场景模型数量: {render_task.scene_models.count()}\n")
             if render_task.scene_models.exists():
                 for i, scene_model in enumerate(render_task.scene_models.all(), 1):
-                    category_names = ", ".join([str(cat.name) for cat in scene_model.scene_model.category.all()])
+                    all_categories = get_parent_categories(set(scene_model.scene_model.category.all()))
+                    category_names = ", ".join([str(cat.name) for cat in all_categories])
                     f.write(f"  场景模型{i}: {scene_model.scene_model.model_id} ({category_names})\n")
+
+                    scene_model_list.append({
+                        "path": scene_model.scene_model.file.path,
+                        "class": category_names,
+                        "points": scene_model.points,
+                    })
+
+            target_model_list = []
+            f.write(f"目标模型数量: {render_task.target_models.count()}\n")
+            if render_task.target_models.exists():
+                for i, target_model in enumerate(render_task.target_models.all(), 1):
+                    all_categories = get_parent_categories(set(target_model.category.all()))
+                    category_names = ", ".join([str(cat.name) for cat in all_categories])
+                    f.write(f"  目标模型{i}: {target_model.model_id} ({category_names})\n")
+
+                    target_model_list.append({
+                        "path": target_model.file.path,
+                        "class": category_names,
+                    })
 
             f.write(f"\n=== 光照参数 ===\n")
             f.write(f"日光方位角: {render_task.sun_azimuth}°\n")
@@ -72,11 +81,8 @@ def execute_render_task(render_id):
         # 开始渲染
         config = {
             "render_id": "Dataset",
-            "target_model_path": None,
-            "target_model_class": None,
-            "scene_model_path": None,
-            "scene_model_class": None,
-            "scene_model_point": None,
+            "scene_model": None,
+            "target_model_list": None,
             "output_dir": render_task.rendered_result_dir.path,
             "renderer": "eevee",
             "resolution": [render_task.image_width, render_task.image_height],
@@ -89,36 +95,45 @@ def execute_render_task(render_id):
         }
 
         index = 0
-        delta_progress = 1 / render_task.target_models.count() * render_task.scene_models.count() * 0.8
-        for target_model in render_task.target_models.all():
-            for scene_model in render_task.scene_models.all():
-                config.update({
-                    "target_model_path": target_model.file.path,
-                    "target_model_class": [cat.name for cat in target_model.category.all()],
-                    "scene_model_path": scene_model.scene_model.file.path,
-                    "scene_model_class": [cat.name for cat in scene_model.scene_model.category.all()],
-                    "scene_model_point": scene_model.points,
-                    "index": index,
-                })
-                index, _ = SceneRenderer.main(config)
-                render_task.render_progress += delta_progress
-                render_task.save()
-        print("渲染完成")
+        render_task_index = 0
+        render_task_num = render_task.target_models.count() * render_task.scene_models.count()
+        delta_progress = 1 / render_task_num * 0.8
+
+        for scene_model in scene_model_list:
+            render_task_index += 1
+            print(f"➡️ ========== 渲染场景 {render_task_index} / {render_task_num} 开始 ==========")
+            config.update({
+                "scene_model": scene_model,
+                "target_model_list": target_model_list,
+                "index": index,
+            })
+            index, _ = SceneRenderer.main(config)
+            render_task.render_progress += delta_progress
+            render_task.save()
+            print(f"🔆 ========== 渲染进程 {render_task_index} / {render_task_num} 完成 ==========")
 
         # 导入FiftyOne
+        print(f"➡️ 导入数据集 {render_id} 到FiftyOne")
         script_path = os.path.join(settings.BASE_DIR, "utils", "fifty_one", "show_in_fiftyone.py")
         dataset_path = os.path.join(render_task.rendered_result_dir.path, "Dataset")
         dataset_name = str(render_id)
         execute_external_python_script.main(settings.FIFTYONE_ENV, script_path, dataset_path, dataset_name)
+        print("🔆 数据集导入FiftyOne完成")
 
         render_task.render_progress = 1
         render_task.save()
 
-        return "渲染完成"
+        return f"\n⭕ 渲染任务：{render_id} 完成渲染"
     except Exception as e:
         import logging
         logging.error(f"渲染失败: {str(e)}")
-        return "渲染失败"
+        return f"\n❌ 渲染任务：{render_id} 渲染失败"
 
 
-
+def get_parent_categories(all_categories):
+    for cat in list(all_categories):
+        parent = cat.parent
+        while parent:
+            all_categories.add(parent)
+            parent = parent.parent
+    return all_categories

@@ -24,33 +24,36 @@ from bpy_extras.object_utils import world_to_camera_view
 class SceneRenderer:
     """ 场景渲染 """
 
-    def __init__(self, target_model_path, target_model_class, scene_model_path, scene_model_class, scene_model_point,
-                 render_id=None, output_dir=r"D:\Projects\RealEarthStudio\Blender照片", index=0):
+    def __init__(self, scene_model, target_model_list, render_id=None,
+                 output_dir=r"D:\Projects\RealEarthStudio\Blender照片", index=0):
         """
         初始化对象
-        :param scene_model_path: 场景模型路径
-        :param target_model_path: 目标模型路径
+        :param scene_model: 场景模型
+        :param target_model_list: 目标模型
         :param output_dir: 渲染图像导出目录
+        :param index: 已经渲染图像数量
         """
         # 生成渲染ID
         self.render_id = render_id if render_id else self.generate_render_id()
-
-        # 获取目标与场景模型类名
-        self.target_model_class = target_model_class
-        self.scene_model_class = scene_model_class
 
         # 获取输出文件夹
         self.output_dir = os.path.join(output_dir, self.render_id)
         self.annotations_file = os.path.join(self.output_dir, "metadata.json")
 
-        # 合并目标模型与场景模型
-        self.target_model_name = Path(target_model_path).stem
-        self.scene_model_name = Path(scene_model_path).stem
-        self.bpy = self.merge_models(scene_model_path, target_model_path, scene_model_point)
-        self.target_obj = self.bpy.data.objects.get("targetModel")
+        # 导入场景模型
+        self.scene_model_name = Path(scene_model["path"]).stem
+        self.scene_model_class = scene_model["class"]
+        self.scene_model_point = scene_model["points"]
+        if self.scene_model_point is None:
+            self.scene_model_point = [[0, 0, 0], [0, 1, 0]]
+        self.bpy = self.load_scene_model(scene_model["path"])
         self.scene = self.bpy.context.scene
-        if not self.target_obj:
-            raise ValueError("场景中未找到目标对象！")
+
+        # 导入目标模型
+        self.target_model_list = target_model_list
+        self.target_model_name = None
+        self.target_model_class = None
+        self.target_obj = None
 
         # 添加初始光照
         sun_height = 100
@@ -94,22 +97,13 @@ class SceneRenderer:
 
         return f"{time_str}_{random_suffix}"
 
-    @staticmethod
-    def merge_models(scene_model_path, target_model_path, scene_model_point=None):
+    def load_scene_model(self, scene_model_path):
         """
-        合并场景模型
-        :param scene_model_path: 场景模型路径
-        :param target_model_path: 目标模型路径
-        :param scene_model_point: 场景模型位置调整参数
+        导入场景模型
         """
-
         # 确保 FBX 文件存在
-        if scene_model_point is None:
-            scene_model_point = [[0, 0, 0], [0, 1, 0]]
         if not os.path.exists(scene_model_path):
             raise FileNotFoundError(f"场景模型文件不存在: {scene_model_path}")
-        if not os.path.exists(target_model_path):
-            raise FileNotFoundError(f"目标模型文件不存在: {target_model_path}")
 
         # 清空当前场景
         bpy.ops.object.select_all(action='SELECT')
@@ -118,9 +112,9 @@ class SceneRenderer:
         # 导入场景模型
         bpy.ops.import_scene.fbx(filepath=scene_model_path)
 
-        if scene_model_point != [[0, 0, 0], [0, 1, 0]]:
-            p1 = Vector(scene_model_point[0])
-            p2 = Vector(scene_model_point[1])
+        if self.scene_model_point != [[0, 0, 0], [0, 1, 0]]:
+            p1 = Vector(self.scene_model_point[0])
+            p2 = Vector(self.scene_model_point[1])
             direction = p2 - p1
             dir_xy = Vector((direction.x, direction.y, 0.0))
             if dir_xy.length == 0:
@@ -151,15 +145,38 @@ class SceneRenderer:
                 # 恢复位置和缩放（防止浮点误差）
                 parent_empty.scale = scale
                 parent_empty.location = (0, 0, 0)
+        print(f"✅ 场景模型 {self.scene_model_name} 导入成功")
+        return bpy
+
+    def load_target_model(self, target_model):
+        """
+        导入目标模型
+        """
+        target_model_path = target_model["path"]
 
         # 导入目标模型
-        bpy.ops.import_scene.fbx(filepath=target_model_path)
-        for obj in bpy.context.selected_objects:
+        if not os.path.exists(target_model_path):
+            raise FileNotFoundError(f"目标模型文件不存在: {target_model_path}")
+        self.target_model_name = Path(target_model_path).stem
+
+        target_model_class = target_model["class"]
+        self.target_model_class = target_model_class
+
+        # 在导入新模型前先删除可能存在的旧模型对象
+        existing_target = self.bpy.data.objects.get("targetModel")
+        if existing_target:
+            self.bpy.data.objects.remove(existing_target, do_unlink=True)
+
+        self.bpy.ops.import_scene.fbx(filepath=target_model_path)
+        for obj in self.bpy.context.selected_objects:
             if obj.type == 'MESH':
                 obj.name = "targetModel"
                 break
 
-        return bpy
+        self.target_obj = self.bpy.data.objects.get("targetModel")
+        if not self.target_obj:
+            raise ValueError("场景中未找到目标对象！")
+        print(f"✅ 目标模型 {self.target_model_name} 导入成功")
 
     def export_blender_file(self, file_dir, file_name="导出模型.blend"):
         """
@@ -414,7 +431,6 @@ class SceneRenderer:
 
             # 检测遮挡与 bbox
             result = self.get_visible_info()
-            print(result)
             if not result[0]:
                 print(f"⚠️ 视角 {azimuth_deg}°：目标不可见，跳过")
                 continue
@@ -460,15 +476,15 @@ class SceneRenderer:
         :param elevation_deg_list: 摄像机与目标模型的仰角列表
         :param rotation_step_deg: 摄像机环绕拍摄时的角度间隔
         """
-        for distance in distance_list:
-            for elevation_deg in elevation_deg_list:
-                self.render_with_annotations(distance, elevation_deg, rotation_step_deg)
+        for target_model in self.target_model_list:
+            self.load_target_model(target_model)
+            for distance in distance_list:
+                for elevation_deg in elevation_deg_list:
+                    self.render_with_annotations(distance, elevation_deg, rotation_step_deg)
 
 
 def main(config: dict):
-    scene_renderer_object = SceneRenderer(config['target_model_path'], config['target_model_class'],
-                                          config['scene_model_path'], config['scene_model_class'],
-                                          config['scene_model_point'],
+    scene_renderer_object = SceneRenderer(config['scene_model'], config['target_model_list'],
                                           render_id=config['render_id'], output_dir=config['output_dir'],
                                           index=config['index'])
 
@@ -476,7 +492,7 @@ def main(config: dict):
     scene_renderer_object.configure_sun(azimuth_deg=config['sun_azimuth_deg'],
                                         elevation_deg=config['sun_elevation_deg'])
 
-    # # 保存模型
+    # 保存模型
     # scene_renderer_object.export_blender_file(scene_renderer_object.output_dir,
     #                                           f'image_{scene_renderer_object.index + 1:04d}.blend')
 
@@ -495,14 +511,22 @@ def main(config: dict):
 
 if __name__ == '__main__':
     CONFIG = {
-        "render_id": "20251218_103729_ztwvNP",
-        "target_model_path": r"D:\Projects\RealEarthStudio\Blender目标模型\01\宾利.000.fbx",
-        "target_model_class": ['宾利', '车辆'],
-        "scene_model_path": r"D:\Projects\OSGB数据\台湾桃园市\Model\矩形_+002_+000\矩形_+002_+000.fbx",
-        "scene_model_point": [
-            [92.7855, -137.2836, 97.3630], [97.7460, -136.9352, 97.2855],
+        "render_id": None,
+        "scene_model": {
+            "path": r"D:\Projects\RealEarthStudio\Blender场景模型\street_0001.fbx",
+            "class": ["道路"],
+            "points": [[186.8546142578125, -63.27665328979492, 97.02672576904297], [179.08160400390625, -63.395328521728516, 97.14110565185547]]
+        },
+        "target_model_list": [
+            {
+                "path": r"D:\Projects\RealEarthStudio\Blender目标模型\01\宾利.000.fbx",
+                "class": ['宾利', '车辆']
+            },
+            {
+                "path": r"D:\Projects\RealEarthStudio\Blender目标模型\01\宝马-Z4.000.fbx",
+                "class": ['宝马', '车辆']
+            }
         ],
-        "scene_model_class": ["街道"],
         "output_dir": r"D:\Projects\RealEarthStudio\Blender照片",
         "renderer": "eevee",
         "resolution": [1920, 1080],
@@ -511,7 +535,7 @@ if __name__ == '__main__':
         "camera_distances": [20],
         "camera_elevations": [30],
         "camera_rotation_step_deg": 180,
-        "index": 2,
+        "index": 0,
     }
     _index, _render_id = main(CONFIG)
     print(f"渲染任务 {_render_id} 已渲染 {_index} 张图片")

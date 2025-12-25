@@ -54,11 +54,11 @@ def rendered_result_path(instance, filename):
 
 
 def default_camera_distances():
-    return [100]
+    return [50]
 
 
 def default_camera_elevations():
-    return [75]
+    return [45]
 
 
 class RenderingTask(models.Model, DirtyFieldsMixin):

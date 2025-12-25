@@ -182,7 +182,7 @@ class SceneModelFileAdmin(BaseCategoryAdmin):
     list_display = ['model_id', 'get_categories', 'uploaded_at', 'point_count', 'file_link']
     category_model_types = ['general', 'scene']
 
-    @admin.display(description="控制点数量")
+    @admin.display(description="渲染点数量")
     def point_count(self, obj):
         # 计算关联到此分类的目标模型和场景模型数量
         return SceneModel.objects.filter(scene_model_id=obj.id).count()

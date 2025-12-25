@@ -8,6 +8,8 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
+
+python manage.py runserver 0.0.0.0:8000
 """
 
 import os
@@ -25,7 +27,13 @@ SECRET_KEY = "django-insecure-v_3zc%gi&$hhnmamvcd^rf+k%tvqw3jrlr$$6%^#dfvb1!b%0+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [
+    # 'localhost',
+    # '127.0.0.1',
+    # '60.61.44.1',
+    # '60.61.44.3',
+    '*'
+]
 
 # Application definition
 

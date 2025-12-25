@@ -24,4 +24,3 @@ def main(external_python_path, script_path, *args):
 
     if result.returncode != 0:
         raise Exception(f"外部程序执行失败: {result.stderr}")
-    print("导入FiftyOne完成")

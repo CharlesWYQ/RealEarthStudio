@@ -49,7 +49,7 @@ class RenderingTaskAdmin(admin.ModelAdmin):
         elif obj.render_progress == 0.9:
             return mark_safe(f'{obj.render_progress * 100:.2f}% | <a href="{url_render}">重新渲染</a>')
         else:
-            return f"{obj.render_progress * 100:.2f}%"
+            return mark_safe(f'{obj.render_progress * 100:.2f}% | <a href="{url_render}">重新渲染</a>')
 
 
 class CustomGroupResultAdmin(GroupResultAdmin):
