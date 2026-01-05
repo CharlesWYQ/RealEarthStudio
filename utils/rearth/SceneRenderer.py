@@ -497,7 +497,6 @@ class SceneRenderer:
             for distance in distance_list:
                 for elevation_deg in elevation_deg_list:
                     self.render_with_annotations(distance, elevation_deg, rotation_step_deg)
-            print(f"🔆 ---------- 渲染目标 {render_task_index} / {render_target_num} 完成 ----------")
 
 
 @timer
