@@ -6,6 +6,7 @@ from django.db import models
 from django.utils import timezone
 from django.db.models.signals import post_delete, m2m_changed
 from django.dispatch import receiver
+from django.core.validators import FileExtensionValidator
 import uuid
 import os
 
@@ -19,19 +20,17 @@ def get_model_upload_path(prefix, instance, filename):
     :return: 上传路径
     """
     ext = filename.split('.')[-1].lower()
-    if ext != 'fbx':
-        ext = 'fbx'
     return os.path.join("Models", prefix, f"{instance.model_id}.{ext}")
-
-
-def target_model_upload_path(instance, filename):
-    """目标模型上传路径"""
-    return get_model_upload_path("TargetModels", instance, filename)
 
 
 def scene_model_upload_path(instance, filename):
     """场景模型上传路径"""
     return get_model_upload_path("SceneModels", instance, filename)
+
+
+def target_model_upload_path(instance, filename):
+    """目标模型上传路径"""
+    return get_model_upload_path("TargetModels", instance, filename)
 
 
 class Category(models.Model):
@@ -92,7 +91,8 @@ class SceneModelFile(models.Model):
     file = models.FileField(
         verbose_name="模型文件",
         upload_to=scene_model_upload_path,
-        help_text="请上传 *.fbx 格式的3D模型文件"
+        help_text="请上传 *.blend 格式的3D模型文件",
+        validators=[FileExtensionValidator(allowed_extensions=['blend', 'fbx'])]
     )
 
     class Meta:
@@ -146,7 +146,8 @@ class TargetModel(models.Model):
     file = models.FileField(
         verbose_name="模型文件",
         upload_to=target_model_upload_path,
-        help_text="请上传 *.fbx 格式的3D模型文件"
+        help_text="请上传 *.fbx 格式的3D模型文件",
+        validators=[FileExtensionValidator(allowed_extensions=['fbx'])]
     )
 
     class Meta:

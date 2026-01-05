@@ -41,30 +41,34 @@ def execute_render_task(render_id):
 
             f.write(f"=== 模型信息 ===\n")
             scene_model_list = []
-            f.write(f"场景模型数量: {render_task.scene_models.count()}\n")
+            scene_models_num = render_task.scene_models.count()
+            f.write(f"场景模型数量: {scene_models_num}\n")
             if render_task.scene_models.exists():
                 for i, scene_model in enumerate(render_task.scene_models.all(), 1):
                     all_categories = get_parent_categories(set(scene_model.scene_model.category.all()))
-                    category_names = ", ".join([str(cat.name) for cat in all_categories])
+                    all_categories = [str(cat.name) for cat in all_categories]
+                    category_names = ", ".join(all_categories)
                     f.write(f"  场景模型{i}: {scene_model.scene_model.model_id} ({category_names})\n")
 
                     scene_model_list.append({
                         "path": scene_model.scene_model.file.path,
-                        "class": category_names,
+                        "class": all_categories,
                         "points": scene_model.points,
                     })
 
             target_model_list = []
-            f.write(f"目标模型数量: {render_task.target_models.count()}\n")
+            target_models_num = render_task.target_models.count()
+            f.write(f"目标模型数量: {target_models_num}\n")
             if render_task.target_models.exists():
                 for i, target_model in enumerate(render_task.target_models.all(), 1):
                     all_categories = get_parent_categories(set(target_model.category.all()))
-                    category_names = ", ".join([str(cat.name) for cat in all_categories])
+                    all_categories = [str(cat.name) for cat in all_categories]
+                    category_names = ", ".join(all_categories)
                     f.write(f"  目标模型{i}: {target_model.model_id} ({category_names})\n")
 
                     target_model_list.append({
                         "path": target_model.file.path,
-                        "class": category_names,
+                        "class": all_categories,
                     })
 
             f.write(f"\n=== 光照参数 ===\n")
@@ -84,7 +88,7 @@ def execute_render_task(render_id):
             "scene_model": None,
             "target_model_list": None,
             "output_dir": render_task.rendered_result_dir.path,
-            "renderer": "eevee",
+            "renderer": render_task.renderer_type,
             "resolution": [render_task.image_width, render_task.image_height],
             "sun_azimuth_deg": render_task.sun_azimuth,
             "sun_elevation_deg": render_task.sun_elevation,
@@ -96,7 +100,7 @@ def execute_render_task(render_id):
 
         index = 0
         render_task_index = 0
-        render_task_num = render_task.target_models.count() * render_task.scene_models.count()
+        render_task_num = scene_models_num
         delta_progress = 1 / render_task_num * 0.8
 
         for scene_model in scene_model_list:
@@ -110,7 +114,7 @@ def execute_render_task(render_id):
             index, _ = SceneRenderer.main(config)
             render_task.render_progress += delta_progress
             render_task.save()
-            print(f"🔆 ========== 渲染进程 {render_task_index} / {render_task_num} 完成 ==========")
+            print(f"🔆 ========== 渲染场景 {render_task_index} / {render_task_num} 完成 ==========")
 
         # 导入FiftyOne
         print(f"➡️ 导入数据集 {render_id} 到FiftyOne")

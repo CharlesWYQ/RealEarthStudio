@@ -18,6 +18,7 @@ from mathutils import Vector, Matrix
 from pathlib import Path
 import numpy as np
 
+from utils.other.decorator_timer import timer
 from bpy_extras.object_utils import world_to_camera_view
 
 
@@ -101,16 +102,23 @@ class SceneRenderer:
         """
         导入场景模型
         """
-        # 确保 FBX 文件存在
+        # 确保模型文件存在
         if not os.path.exists(scene_model_path):
             raise FileNotFoundError(f"场景模型文件不存在: {scene_model_path}")
 
-        # 清空当前场景
-        bpy.ops.object.select_all(action='SELECT')
-        bpy.ops.object.delete(use_global=False, confirm=False)
+        ext = scene_model_path.split('.')[-1].lower()
+        if ext == "fbx":
+            # 清空当前场景
+            bpy.ops.object.select_all(action='SELECT')
+            bpy.ops.object.delete(use_global=False, confirm=False)
 
-        # 导入场景模型
-        bpy.ops.import_scene.fbx(filepath=scene_model_path)
+            # 导入场景模型
+            bpy.ops.import_scene.fbx(filepath=scene_model_path)
+        elif ext == "blend":
+            # 导入场景模型
+            bpy.ops.wm.open_mainfile(filepath=scene_model_path)
+        else:
+            raise FileNotFoundError(f"不支持的场景模型格式: {scene_model_path}")
 
         if self.scene_model_point != [[0, 0, 0], [0, 1, 0]]:
             p1 = Vector(self.scene_model_point[0])
@@ -237,12 +245,14 @@ class SceneRenderer:
         """
         self.renderer = renderer.upper()
         prefs = self.bpy.context.preferences
+        self.scene.render.use_simplify = True
 
         if self.renderer == "CYCLES":
             # 设置渲染引擎为 Cycles
             self.scene.render.engine = 'CYCLES'
             self.scene.cycles.samples = 64  # 降低采样加快速度
             self.scene.cycles.preview_samples = 16
+            self.scene.cycles.use_camera_cull = True  # 使用相机裁剪
 
             # 确保 cycles 插件启用
             if "cycles" not in prefs.addons:
@@ -432,12 +442,12 @@ class SceneRenderer:
             # 检测遮挡与 bbox
             result = self.get_visible_info()
             if not result[0]:
-                print(f"⚠️ 视角 {azimuth_deg}°：目标不可见，跳过")
+                print(f"⚠️ 视角 {azimuth_deg}°：目标不可见，跳过保存")
                 continue
 
             is_visible, occlusion_ratio, (cx, cy, w, h) = result
-            if occlusion_ratio > 0.5:
-                print(f"❌ 视角 {azimuth_deg}° 遮挡比例过高 ({occlusion_ratio:.2%})，跳过保存")
+            if occlusion_ratio > 0.6:
+                print(f"❌ 视角 {azimuth_deg}°：遮挡比例过高，跳过保存 | 遮挡比例: {occlusion_ratio:.2%}")
                 continue
 
             # 保存图像
@@ -449,7 +459,7 @@ class SceneRenderer:
             # 保存标注信息
             self.annotations_to_json(filename, distance, elevation_deg, azimuth_deg, cx, cy, w, h, occlusion_ratio)
 
-            print(f"✅ 已保存: {filename} | 遮挡比例: {occlusion_ratio:.2%}")
+            print(f"✅ 视角 {azimuth_deg}°：已保存 {filename} | 遮挡比例: {occlusion_ratio:.2%}")
 
         # 保存标注文件
         if not os.path.exists(self.annotations_file):
@@ -467,7 +477,7 @@ class SceneRenderer:
                     f.seek(0)
                     f.truncate()
                     json.dump(self.annotation_lines, f, indent=4)
-        print(f"\n📄 标注文件已保存: {self.annotations_file}")
+        print(f"📄 标注文件已保存: {self.annotations_file}")
 
     def batch_render_with_annotations(self, distance_list: list, elevation_deg_list: list, rotation_step_deg=45):
         """
@@ -476,13 +486,19 @@ class SceneRenderer:
         :param elevation_deg_list: 摄像机与目标模型的仰角列表
         :param rotation_step_deg: 摄像机环绕拍摄时的角度间隔
         """
+        render_task_index = 0
+        render_target_num = len(self.target_model_list)
         for target_model in self.target_model_list:
+            render_task_index += 1
+            print(f"➡️ ---------- 渲染目标 {render_task_index} / {render_target_num} 开始 ----------")
             self.load_target_model(target_model)
             for distance in distance_list:
                 for elevation_deg in elevation_deg_list:
                     self.render_with_annotations(distance, elevation_deg, rotation_step_deg)
+            print(f"🔆 ---------- 渲染目标 {render_task_index} / {render_target_num} 完成 ----------")
 
 
+@timer
 def main(config: dict):
     scene_renderer_object = SceneRenderer(config['scene_model'], config['target_model_list'],
                                           render_id=config['render_id'], output_dir=config['output_dir'],

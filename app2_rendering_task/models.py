@@ -69,7 +69,7 @@ class RenderingTask(models.Model, DirtyFieldsMixin):
         (0, '图像数据集'),
         (1, '点云数据集'),
     ]
-    render_type = models.SmallIntegerField("渲染器类别", choices=RENDER_TYPE, default=0)
+    render_type = models.SmallIntegerField("渲染类别", choices=RENDER_TYPE, default=0)
     render_time = models.DateTimeField(verbose_name="渲染时间", default=timezone.now)
     render_progress = models.FloatField("渲染进度", default=0.0, help_text="渲染任务的进度(0-1)")
 
