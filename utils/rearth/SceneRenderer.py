@@ -442,12 +442,13 @@ class SceneRenderer:
             # 检测遮挡与 bbox
             result = self.get_visible_info()
             if not result[0]:
-                print(f"⚠️ 视角 {azimuth_deg}°：目标不可见，跳过保存")
+                print(f"⚠️ 相机距离 {distance} 米，高低角 {elevation_deg}°，视角 {azimuth_deg}°：目标不可见，跳过保存")
                 continue
 
             is_visible, occlusion_ratio, (cx, cy, w, h) = result
             if occlusion_ratio > 0.6:
-                print(f"❌ 视角 {azimuth_deg}°：遮挡比例过高，跳过保存 | 遮挡比例: {occlusion_ratio:.2%}")
+                print(
+                    f"❌ 相机距离 {distance} 米，高低角 {elevation_deg}°，视角 {azimuth_deg}°：遮挡比例过高，跳过保存 | 遮挡比例: {occlusion_ratio:.2%}")
                 continue
 
             # 保存图像
@@ -459,7 +460,8 @@ class SceneRenderer:
             # 保存标注信息
             self.annotations_to_json(filename, distance, elevation_deg, azimuth_deg, cx, cy, w, h, occlusion_ratio)
 
-            print(f"✅ 视角 {azimuth_deg}°：已保存 {filename} | 遮挡比例: {occlusion_ratio:.2%}")
+            print(
+                f"✅ 相机距离 {distance} 米，高低角 {elevation_deg}°，视角 {azimuth_deg}°：已保存 {filename} | 遮挡比例: {occlusion_ratio:.2%}")
 
         # 保存标注文件
         if not os.path.exists(self.annotations_file):
@@ -531,7 +533,8 @@ if __name__ == '__main__':
         "scene_model": {
             "path": r"D:\Projects\RealEarthStudio\Blender场景模型\street_0001.fbx",
             "class": ["道路"],
-            "points": [[186.8546142578125, -63.27665328979492, 97.02672576904297], [179.08160400390625, -63.395328521728516, 97.14110565185547]]
+            "points": [[186.8546142578125, -63.27665328979492, 97.02672576904297],
+                       [179.08160400390625, -63.395328521728516, 97.14110565185547]]
         },
         "target_model_list": [
             {
