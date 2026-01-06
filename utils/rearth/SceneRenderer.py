@@ -108,12 +108,16 @@ class SceneRenderer:
 
         ext = scene_model_path.split('.')[-1].lower()
         if ext == "fbx":
-            # 清空当前场景
-            bpy.ops.object.select_all(action='SELECT')
-            bpy.ops.object.delete(use_global=False, confirm=False)
+            if os.path.exists(scene_model_path + ".blend"):
+                bpy.ops.wm.open_mainfile(filepath=scene_model_path + ".blend")
+            else:
+                # 清空当前场景
+                bpy.ops.object.select_all(action='SELECT')
+                bpy.ops.object.delete(use_global=False, confirm=False)
 
-            # 导入场景模型
-            bpy.ops.import_scene.fbx(filepath=scene_model_path)
+                # 导入场景模型
+                bpy.ops.import_scene.fbx(filepath=scene_model_path)
+                bpy.ops.wm.save_as_mainfile(filepath=scene_model_path + ".blend")
         elif ext == "blend":
             # 导入场景模型
             bpy.ops.wm.open_mainfile(filepath=scene_model_path)
@@ -222,6 +226,7 @@ class SceneRenderer:
         rot_quat = look_at.to_track_quat('-Z', 'Y')  # -Z是光的前向，Y是上向
         self.sun_obj.rotation_mode = 'QUATERNION'
         self.sun_obj.rotation_quaternion = rot_quat
+        print(f"✅ 日光参数调整完毕 | 光照强度：{energy}，方向角：{azimuth_deg}°，高低角：{elevation_deg}°")
 
     def configure_camara(self, x, y, z):
         """
@@ -438,17 +443,18 @@ class SceneRenderer:
             y = distance * math.cos(elev) * math.cos(azim)
             z = distance * math.sin(elev)
             self.configure_camara(x, y, z)
+            print(f"✅ 相机参数调整完毕 | 相机距离：{distance}米，方向角：{azimuth_deg}°，高低角：{elevation_deg}°")
 
             # 检测遮挡与 bbox
             result = self.get_visible_info()
             if not result[0]:
-                print(f"⚠️ 相机距离 {distance} 米，高低角 {elevation_deg}°，方位角 {azimuth_deg}°：目标不可见，跳过保存")
+                print(f"⚠️ 标不可见，跳过保存")
                 continue
 
             is_visible, occlusion_ratio, (cx, cy, w, h) = result
             if occlusion_ratio > 0.6:
                 print(
-                    f"❌ 相机距离 {distance} 米，高低角 {elevation_deg}°，方位角 {azimuth_deg}°：遮挡比例过高，跳过保存 | 遮挡比例: {occlusion_ratio:.2%}")
+                    f"❌ 遮挡比例过高，跳过保存 | 遮挡比例: {occlusion_ratio:.2%}")
                 continue
 
             # 保存图像
@@ -461,7 +467,7 @@ class SceneRenderer:
             self.annotations_to_json(filename, distance, elevation_deg, azimuth_deg, cx, cy, w, h, occlusion_ratio)
 
             print(
-                f"✅ 相机距离 {distance} 米，高低角 {elevation_deg}°，方位角 {azimuth_deg}°：已保存 {filename} | 遮挡比例: {occlusion_ratio:.2%}")
+                f"✅ 已保存 {filename} | 遮挡比例: {occlusion_ratio:.2%}")
 
         # 保存标注文件
         if not os.path.exists(self.annotations_file):

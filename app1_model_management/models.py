@@ -91,7 +91,7 @@ class SceneModelFile(models.Model):
     file = models.FileField(
         verbose_name="模型文件",
         upload_to=scene_model_upload_path,
-        help_text="请上传 *.blend 格式的3D模型文件",
+        help_text="请上传 *.blend 或 *.fbx 格式的3D模型文件",
         validators=[FileExtensionValidator(allowed_extensions=['blend', 'fbx'])]
     )
 
