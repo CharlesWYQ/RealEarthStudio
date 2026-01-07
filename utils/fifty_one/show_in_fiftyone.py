@@ -60,12 +60,12 @@ def show_in_fiftyone(image_dir, dataset_name="dataset"):
         sample["RealEarthStudio标注"] = fo.Detections(detections=detections)
         sample["背景类别"] = anns[0]["scene_class"]
         sample["光照强度"] = anns[0]["sun_energy"]
-        sample["光照角度"] = anns[0]["sun_azimuth_deg"]
-        sample["光照仰角"] = anns[0]["sun_elevation_deg"]
-        sample["拍摄距离"] = anns[0]["distance"]
-        sample["拍摄角度"] = anns[0]["azimuth_deg"]
+        sample["光照方位角"] = anns[0]["sun_azimuth_deg"]
+        sample["光照俯仰角"] = anns[0]["sun_elevation_deg"]
+        sample["相机距离"] = anns[0]["distance"]
+        sample["相机方位角"] = anns[0]["azimuth_deg"]
         elevation_deg = anns[0]["elevation_deg"]
-        sample["拍摄仰角"] = elevation_deg
+        sample["相机高低角"] = elevation_deg
         sample["渲染器类型"] = anns[0]["renderer"]
 
         # 写入标签
