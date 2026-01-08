@@ -519,15 +519,15 @@ def main(config: dict):
     # scene_renderer_object.export_blender_file(scene_renderer_object.output_dir,
     #                                           f'image_{scene_renderer_object.index + 1:04d}.blend')
 
-    # # 修改分辨率
-    # scene_renderer_object.set_resolution(config['resolution'][0], config['resolution'][1])
-    #
-    # # 修改渲染器
-    # scene_renderer_object.set_renderer(config['renderer'])
-    #
-    # # 批量渲染
-    # scene_renderer_object.batch_render_with_annotations(config['camera_distances'], config['camera_elevations'],
-    #                                                     config['camera_rotation_step_deg'])
+    # 修改分辨率
+    scene_renderer_object.set_resolution(config['resolution'][0], config['resolution'][1])
+
+    # 修改渲染器
+    scene_renderer_object.set_renderer(config['renderer'])
+
+    # 批量渲染
+    scene_renderer_object.batch_render_with_annotations(config['camera_distances'], config['camera_elevations'],
+                                                        config['camera_rotation_step_deg'])
 
     return scene_renderer_object.index, scene_renderer_object.render_id
 
