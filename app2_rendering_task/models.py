@@ -65,6 +65,7 @@ class RenderingTask(models.Model, DirtyFieldsMixin):
     # 任务信息
     render_id = models.UUIDField("渲染ID", default=uuid.uuid4, editable=False, unique=True,
                                  help_text="渲染任务的唯一标识")
+    render_name = models.CharField("任务名称", max_length=50, default="渲染任务")
     RENDER_TYPE = [
         (0, '图像数据集'),
         (1, '点云数据集'),

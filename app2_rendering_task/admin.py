@@ -10,7 +10,7 @@ from django_celery_results.admin import GroupResultAdmin, TaskResultAdmin
 
 @admin.register(RenderingTask)
 class RenderingTaskAdmin(admin.ModelAdmin):
-    list_display = ['render_id', 'render_type', 'render_time', 'renderer_type', 'image_width', 'image_height',
+    list_display = ['render_id', 'render_name', 'render_type', 'render_time', 'renderer_type', 'image_width', 'image_height',
                     'render_progress_display']
     search_fields = ['render_id']
     list_filter = ['renderer_type', 'render_time']
@@ -19,7 +19,7 @@ class RenderingTaskAdmin(admin.ModelAdmin):
     # 字段分组显示
     fieldsets = (
         ('任务信息', {
-            'fields': ('render_id', 'render_time', 'render_type', 'renderer_type', 'render_progress')
+            'fields': ('render_id', 'render_name', 'render_time', 'render_type', 'renderer_type', 'render_progress')
         }),
         ('模型配置', {
             'fields': ('scene_models', 'target_models')

@@ -42,22 +42,14 @@ for obj in objects_to_export:
     bpy.ops.object.transform_apply(location=True, rotation=False, scale=False)
 
     # 4. 导出为 FBX（关键：embed_textures=True）
-    filepath = os.path.join(OUTPUT_DIR, f"{obj.name}.fbx")
-    bpy.ops.export_scene.fbx(
+    filepath = os.path.join(OUTPUT_DIR, f"{obj.name}.glb")
+    bpy.ops.export_scene.gltf(
         filepath=filepath,
         use_selection=True,
-        object_types={'MESH'},
-        bake_space_transform=True,
-        apply_scale_options='FBX_SCALE_ALL',
-        apply_unit_scale=True,
-        mesh_smooth_type='FACE',
-        add_leaf_bones=False,
-        embed_textures=True,  # 贴图嵌入 FBX 文件！
-        path_mode='COPY',  # 自动复制贴图到 FBX 内部（配合 embed_textures）
-        batch_mode='OFF'  # 不使用批量模式
+        export_format='GLB'
     )
 
     # 5. 清理临时对象
     bpy.data.objects.remove(obj_copy, do_unlink=True)
 
-print(f"\n✅ 完成！所有 FBX 文件已嵌入贴图并居中。\n路径: {OUTPUT_DIR}")
+print(f"\n✅ 完成！所有 GLB 文件已嵌入贴图并居中。\n路径: {OUTPUT_DIR}")

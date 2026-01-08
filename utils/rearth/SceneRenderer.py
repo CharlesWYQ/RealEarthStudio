@@ -4,7 +4,7 @@
 # @Email : charleswyq@foxmail.com
 # @File : SceneRenderer.py
 # @Project : RealEarthStudio
-# @Details : 
+# @Details :
 
 
 import os
@@ -65,7 +65,7 @@ class SceneRenderer:
         self.sun_energy = None
         self.sun_azimuth_deg = None
         self.sun_elevation_deg = None
-        self.configure_sun()
+        # self.configure_sun()
 
         # 创建相机
         self.bpy.ops.object.camera_add(location=(0, 0, 0))
@@ -107,7 +107,7 @@ class SceneRenderer:
             raise FileNotFoundError(f"场景模型文件不存在: {scene_model_path}")
 
         ext = scene_model_path.split('.')[-1].lower()
-        if ext == "fbx":
+        if ext in ["fbx", "glb"]:
             if os.path.exists(scene_model_path + ".blend"):
                 bpy.ops.wm.open_mainfile(filepath=scene_model_path + ".blend")
             else:
@@ -116,7 +116,10 @@ class SceneRenderer:
                 bpy.ops.object.delete(use_global=False, confirm=False)
 
                 # 导入场景模型
-                bpy.ops.import_scene.fbx(filepath=scene_model_path)
+                if ext == "fbx":
+                    bpy.ops.import_scene.fbx(filepath=scene_model_path)
+                elif ext == "glb":
+                    bpy.ops.import_scene.gltf(filepath=scene_model_path)
                 bpy.ops.wm.save_as_mainfile(filepath=scene_model_path + ".blend")
         elif ext == "blend":
             # 导入场景模型
@@ -179,15 +182,56 @@ class SceneRenderer:
         if existing_target:
             self.bpy.data.objects.remove(existing_target, do_unlink=True)
 
-        self.bpy.ops.import_scene.fbx(filepath=target_model_path)
-        for obj in self.bpy.context.selected_objects:
-            if obj.type == 'MESH':
-                obj.name = "targetModel"
-                break
+        # 导入模型
+        ext = target_model_path.split('.')[-1].lower()
+        if ext =="fbx":
+            self.bpy.ops.import_scene.fbx(filepath=target_model_path)
+        elif ext == "glb":
+            self.bpy.ops.import_scene.gltf(filepath=target_model_path)
 
+        # 获取所有新导入的对象
+        imported_objects = list(self.bpy.context.selected_objects)
+
+        # 创建一个空的集合来存储所有网格对象
+        mesh_objects = [obj for obj in imported_objects if obj.type == 'MESH']
+
+        if not mesh_objects:
+            # 如果没有网格对象，查找其他类型的有效对象
+            valid_objects = [obj for obj in imported_objects if
+                             obj.type in ['MESH', 'CURVE', 'SURFACE', 'META', 'FONT']]
+            if valid_objects:
+                # 创建一个父级空对象来整合所有对象
+                self.bpy.ops.object.empty_add(type='PLAIN_AXES', location=(0, 0, 0))
+                target_empty = self.bpy.context.active_object
+                target_empty.name = "targetModel"
+
+                # 将所有导入的对象作为子对象
+                for obj in valid_objects:
+                    obj.parent = target_empty
+            else:
+                raise ValueError("导入的模型中没有有效的可渲染对象！")
+        elif len(mesh_objects) == 1:
+            # 如果只有一个网格对象，直接重命名为 targetModel
+            mesh_objects[0].name = "targetModel"
+        else:
+            # 如果有多个网格对象，合并为一个对象
+            self.bpy.context.view_layer.objects.active = mesh_objects[0]
+            mesh_objects[0].select_set(True)
+
+            # 选择所有其他网格对象
+            for obj in mesh_objects[1:]:
+                obj.select_set(True)
+
+            # 合并选中的对象
+            self.bpy.ops.object.join()
+            mesh_objects[0].name = "targetModel"
+
+        # 设置 target_obj 为整合后的对象
         self.target_obj = self.bpy.data.objects.get("targetModel")
         if not self.target_obj:
             raise ValueError("场景中未找到目标对象！")
+
+        # self.export_blender_file(self.output_dir)
         print(f"✅ 目标模型 {self.target_model_name} 导入成功")
 
     def export_blender_file(self, file_dir, file_name="导出模型.blend"):
@@ -536,18 +580,18 @@ if __name__ == '__main__':
     CONFIG = {
         "render_id": None,
         "scene_model": {
-            "path": r"D:\Projects\RealEarthStudio\Blender场景模型\street_0001.fbx",
+            "path": r"D:\Projects\RealEarthStudio\RealEarthStudio\media\Models\SceneModels\83f04593-4b8d-4183-af54-6c1181f44c77.blend",
             "class": ["道路"],
-            "points": [[186.8546142578125, -63.27665328979492, 97.02672576904297],
-                       [179.08160400390625, -63.395328521728516, 97.14110565185547]]
+            "points": [[93.0268325805664, -83.3025131225586, 97.51380920410156],
+                       [83.39315795898438, -83.73857116699219, 97.44676208496094]]
         },
         "target_model_list": [
             {
-                "path": r"D:\Projects\RealEarthStudio\Blender目标模型\01\宾利.000.fbx",
+                "path": r"D:\Projects\RealEarthStudio\Blender目标模型\03\轿车-雷克萨斯.glb",
                 "class": ['宾利', '车辆']
             },
             {
-                "path": r"D:\Projects\RealEarthStudio\Blender目标模型\01\宝马-Z4.000.fbx",
+                "path": r"D:\Projects\RealEarthStudio\Blender目标模型\03\SUV-宝马X6.fbx",
                 "class": ['宝马', '车辆']
             }
         ],

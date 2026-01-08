@@ -91,8 +91,8 @@ class SceneModelFile(models.Model):
     file = models.FileField(
         verbose_name="模型文件",
         upload_to=scene_model_upload_path,
-        help_text="请上传 *.blend 或 *.fbx 格式的3D模型文件",
-        validators=[FileExtensionValidator(allowed_extensions=['blend', 'fbx'])]
+        help_text="请上传 *.blend/*.glb/*.fbx 格式的3D模型文件",
+        validators=[FileExtensionValidator(allowed_extensions=['blend', 'glb', 'fbx'])]
     )
 
     class Meta:
@@ -146,8 +146,8 @@ class TargetModel(models.Model):
     file = models.FileField(
         verbose_name="模型文件",
         upload_to=target_model_upload_path,
-        help_text="请上传 *.fbx 格式的3D模型文件",
-        validators=[FileExtensionValidator(allowed_extensions=['fbx'])]
+        help_text="请上传 *.glb/*.fbx 格式的3D模型文件",
+        validators=[FileExtensionValidator(allowed_extensions=['glb', 'fbx'])]
     )
 
     class Meta:
