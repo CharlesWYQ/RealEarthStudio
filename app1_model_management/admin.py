@@ -11,7 +11,7 @@ admin.site.index_title = '数据维护管理系统'
 class CategoryAdmin(admin.ModelAdmin):
     list_display = ['model_type', 'name', 'parent', 'level', 'is_leaf_status', 'model_count']
     search_fields = ['name']
-    ordering = ['level', 'name']
+    ordering = ['model_type', 'level', 'name']
     list_display_links = ['name']
     readonly_fields = ['id', 'level']
 
