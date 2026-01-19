@@ -1,4 +1,4 @@
-# RealEarthStudio 
+# RealEarthStudio
 
 > 一个用于构建真实地球场景、合成3D数据并渲染高质量图像的开源工具集。
 
@@ -33,18 +33,25 @@
 
 ### 2.2 安装步骤
 
+#### （1）克隆项目
+
 ```bash
-# 克隆项目
 git clone https://github.com/CharlesWYQ/RealEarthStudio.git
 cd RealEarthStudio
+```
 
-# 创建Django环境并安装依赖 (Anaconda)
+#### （2）创建Django环境并安装依赖 (Anaconda)
+
+```bash
 conda create -n realearthstudio_env python=3.11
 conda activate realearthstudio_env
 
 pip install -r requirements.txt
+```
 
-# 创建FiftyOne环境并安装依赖 (Anaconda)
+#### （3）创建FiftyOne环境并安装依赖 (Anaconda)
+
+```bash
 conda create -n fiftyone_env python=3.11
 conda activate fiftyone_env
 
@@ -55,4 +62,18 @@ conda run -n fiftyone_env python -c "import sys; print(sys.executable)"
 
 # 将上述地址复制到 ./RealEarthStudio/setting.py 中
 FIFTYONE_ENV = r"<FiftyOne环境解释器地址>"
+```
+
+#### （4）安装MySQL和Redis数据库
+
+安装完毕后在 `./RealEarthStudio/setting.py` 中修改MySQL数据库信息。
+
+#### （5）迁移数据库
+```bash
+# 迁移数据库
+python manage.py makemigrations
+python manage.py migrate
+
+# 创建管理员账号
+python manage.py createsuperuser
 ```
