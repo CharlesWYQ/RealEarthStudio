@@ -218,4 +218,4 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # 外部Python环境
-FIFTYONE_ENV = r"D:\ProgramData\anaconda3\envs\fiftyone_env\python.exe"
+FIFTYONE_ENV = r"D:\ProgramData\miniconda3\envs\fiftyone_env\python.exe"

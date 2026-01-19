@@ -348,9 +348,11 @@ class SceneRenderer:
             # 设置 GPU 渲染
             self.scene.cycles.device = 'GPU' if gpu_found else 'CPU'
             print(f"🔧 CYCLES渲染设备设置为: {self.scene.cycles.device}")
+            return None
 
         else:
             self.scene.render.engine = 'BLENDER_EEVEE'
+            return None
 
     def set_resolution(self, width=1920, height=1080):
         """
@@ -361,7 +363,7 @@ class SceneRenderer:
         self.scene.render.resolution_x = width
         self.scene.render.resolution_y = height
 
-    def get_visible_info(self, occlusion_threshold=0.8, sample_rate=0.1):
+    def get_visible_info(self, occlusion_threshold=0.95, sample_rate=0.1):
         """
         使用射线投射快速判断目标是否可见（遮挡比例 <= threshold）
         返回: (is_visible: bool, occlusion_ratio: float, bbox: (cx,cy,w,h) or None)
@@ -492,11 +494,11 @@ class SceneRenderer:
             # 检测遮挡与 bbox
             result = self.get_visible_info()
             if not result[0]:
-                print(f"⚠️ 标不可见，跳过保存")
+                print(f"⚠️ 目标不可见，跳过保存")
                 continue
 
             is_visible, occlusion_ratio, (cx, cy, w, h) = result
-            if occlusion_ratio > 0.6:
+            if occlusion_ratio > 0.8:
                 print(
                     f"❌ 遮挡比例过高，跳过保存 | 遮挡比例: {occlusion_ratio:.2%}")
                 continue

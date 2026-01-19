@@ -35,29 +35,28 @@ def show_in_fiftyone(image_dir, dataset_name="dataset"):
             x, y, w, h = ann["bbox"]
             rel_bbox = [x - w / 2, y - h / 2, w, h]
 
-            label_tags = ann["target_class"]
-            occlusion = ann["occlusion"]
-            if occlusion <= 0.05:
-                label_tags.append("未遮挡")
-            elif occlusion <= 0.3:
-                label_tags.append("轻度遮挡")
-            elif occlusion <= 0.5:
-                label_tags.append("中度遮挡")
-            else:
-                label_tags.append("重度遮挡")
-
             detection = fo.Detection(
-                label=ann["target_class"][0],
+                label=ann["target_class"][1],
                 bounding_box=rel_bbox,
                 confidence=1,
-                occlusion=occlusion,
-                tags=label_tags,
             )
             detections.append(detection)
 
         # 创建样本
         sample = fo.Sample(filepath=img_path)
         sample["RealEarthStudio标注"] = fo.Detections(detections=detections)
+        sample["目标类别"] = anns[0]["target_class"]
+        occlusion = anns[0]["occlusion"]
+        sample["遮挡比例"] = f'{occlusion * 100: .2f} %'
+        if occlusion <= 0.05:
+            occlusion_type = "未遮挡"
+        elif occlusion <= 0.3:
+            occlusion_type = "轻度遮挡"
+        elif occlusion <= 0.5:
+            occlusion_type = "中度遮挡"
+        else:
+            occlusion_type = "重度遮挡"
+        sample["遮挡情况"] = occlusion_type
         sample["背景类别"] = anns[0]["scene_class"]
         sample["光照强度"] = anns[0]["sun_energy"]
         sample["光照方位角"] = anns[0]["sun_azimuth_deg"]

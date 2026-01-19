@@ -22,6 +22,7 @@ def get_marker_positions():
     pos2 = obj2.location.copy()
 
     print(f"[{list(pos1)}, {list(pos2)}]")
+    return None
 
 
 # 执行
