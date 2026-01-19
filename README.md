@@ -35,13 +35,24 @@
 
 ```bash
 # 克隆项目
-git clone https://gitee.com/charlsewyq/RealEarthStudio.git
+git clone https://github.com/CharlesWYQ/RealEarthStudio.git
 cd RealEarthStudio
 
-# 创建虚拟环境 (Anaconda)
-conda create -n RealEarthStudio python=3.11
-conda activate RealEarthStudio
+# 创建Django环境并安装依赖 (Anaconda)
+conda create -n realearthstudio_env python=3.11
+conda activate realearthstudio_env
 
-# 安装依赖
 pip install -r requirements.txt
+
+# 创建FiftyOne环境并安装依赖 (Anaconda)
+conda create -n fiftyone_env python=3.11
+conda activate fiftyone_env
+
+pip install fiftyone
+
+# 查找FiftyOne环境解释器地址
+conda run -n fiftyone_env python -c "import sys; print(sys.executable)"
+
+# 将上述地址复制到 ./RealEarthStudio/setting.py 中
+FIFTYONE_ENV = r"<FiftyOne环境解释器地址>"
 ```

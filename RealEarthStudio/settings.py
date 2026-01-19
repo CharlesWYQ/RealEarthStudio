@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 python manage.py runserver 0.0.0.0:8000
 """
 
-import os
+import os, subprocess
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
