@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 python manage.py runserver 0.0.0.0:8000
 """
 
-import os, subprocess
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -27,13 +27,7 @@ SECRET_KEY = "django-insecure-v_3zc%gi&$hhnmamvcd^rf+k%tvqw3jrlr$$6%^#dfvb1!b%0+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = [
-    # 'localhost',
-    # '127.0.0.1',
-    # '60.61.44.1',
-    # '60.61.44.3',
-    '*'
-]
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
 # Application definition
 
@@ -95,17 +89,30 @@ DATABASES = {
     # }
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'RealEarthStudio',  # 数据库名
-        'USER': 'RESAdmin',  # MySQL 用户名
-        'PASSWORD': 'liangge2',  # 密码
-        'HOST': 'localhost',  # 本地开发用 localhost
-        'PORT': '3306',  # 默认端口
+        'NAME': os.environ.get('MYSQL_DATABASE', 'RealEarthStudio'),  # 数据库名
+        'USER': os.environ.get('MYSQL_USER','RESAdmin'),  # MySQL 用户名
+        'PASSWORD': os.environ.get('MYSQL_PASSWORD','liangge2'),  # 密码
+        'HOST': os.environ.get('MYSQL_HOST', 'localhost'),  # 本地开发用 localhost
+        'PORT': os.environ.get('MYSQL_PORT', '3306'),  # 默认端口
         'OPTIONS': {
             'charset': 'utf8mb4',  # 支持 emoji 和完整 Unicode
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",  # 严格模式
         },
     }
 }
+
+# Redis for cache/session
+# CACHES = {
+#     "default": {
+#         "BACKEND": "django_redis.cache.RedisCache",
+#         "LOCATION": f"redis://{os.environ.get('REDIS_HOST', 'cache')}:{os.environ.get('REDIS_PORT', '6379')}/1",
+#         "OPTIONS": {
+#             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+#         }
+#     }
+# }
+# SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+# SESSION_CACHE_ALIAS = "default"
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -218,4 +225,4 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # 外部Python环境
-FIFTYONE_ENV = r"D:\ProgramData\miniconda3\envs\fiftyone_env\python.exe"
+FIFTYONE_ENV = os.environ.get('FIFTYONE_ENV', r"D:\ProgramData\miniconda3\envs\fiftyone_env\python.exe")

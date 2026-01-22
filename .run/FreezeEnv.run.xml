@@ -1,0 +1,8 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="FreezeEnv" type="CompoundRunConfigurationType">
+    <toRun name="FreezePip" type="ShConfigurationType" />
+    <toRun name="GetFiftyOneEnv" type="ShConfigurationType" />
+    <toRun name="GetRealEarthStudioEnv" type="ShConfigurationType" />
+    <method v="2" />
+  </configuration>
+</component>
