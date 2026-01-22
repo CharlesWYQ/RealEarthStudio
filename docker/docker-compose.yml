@@ -1,0 +1,30 @@
+# docker-compose.yml
+version: '1.0'
+
+services:
+  mysql:
+    image: library/mysql
+    container_name: mysql
+    env_file:
+      - .env
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password
+
+  redis:
+    image: library/redis
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  redis_data:
