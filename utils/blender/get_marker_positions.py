@@ -22,7 +22,11 @@ def get_marker_positions():
     pos2 = obj2.location.copy()
 
     print(f"[{list(pos1)}, {list(pos2)}]")
-    return None
+
+    bpy.data.objects.remove(obj1, do_unlink=True)
+    bpy.data.objects.remove(obj2, do_unlink=True)
+
+    return pos1, pos2
 
 
 # 执行
