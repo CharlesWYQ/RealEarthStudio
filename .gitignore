@@ -108,4 +108,4 @@ venv.bak/
 
 # Django
 media
-./utils/yolo/Datasets/
+utils/yolo/Datasets/
