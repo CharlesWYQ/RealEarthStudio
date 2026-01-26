@@ -125,7 +125,7 @@ class BaseCategoryAdmin(admin.ModelAdmin):
             kwargs["queryset"] = Category.objects.filter(
                 model_type__in=self.category_model_types,
                 children__isnull=True
-            )
+            ).order_by("level", "parent", )
         return super().formfield_for_manytomany(db_field, request, **kwargs)
 
     def get_list_filter(self, request):
