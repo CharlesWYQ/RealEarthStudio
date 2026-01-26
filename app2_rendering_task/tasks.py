@@ -140,4 +140,4 @@ def get_parent_categories(all_categories):
         while parent:
             all_categories.add(parent)
             parent = parent.parent
-    return all_categories
+    return sorted(list(all_categories), key=lambda x: x.level)
